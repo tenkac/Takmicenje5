@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WORLD CUP 2026 — CUSTOM ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Floating / drifting soccer balls */
+@keyframes wc-float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  30%       { transform: translateY(-22px) rotate(12deg); }
+  65%       { transform: translateY(-10px) rotate(-6deg); }
+}
+
+/* Gold trophy glow breathe */
+@keyframes wc-gold-pulse {
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(250,204,21,0.25)); }
+  50%       { filter: drop-shadow(0 0 55px rgba(250,204,21,0.9)) drop-shadow(0 0 110px rgba(250,204,21,0.35)); }
+}
+
+/* Scrolling scoreboard ticker */
+@keyframes wc-ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Confetti cascade */
+@keyframes wc-confetti {
+  0%   { transform: translateY(-20px) rotate(0deg) scale(1);    opacity: 0.9; }
+  100% { transform: translateY(110vh)  rotate(680deg) scale(0.4); opacity: 0;   }
+}
+
+/* Entrance slide-up */
+@keyframes wc-slide-up {
+  from { transform: translateY(45px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Gold shine text sweep */
+@keyframes wc-shine {
+  0%   { background-position: -220% center; }
+  100% { background-position:  220% center; }
+}
+
+/* Stadium light sweep from top */
+@keyframes wc-beam-sweep {
+  0%, 100% { opacity: 0.18; transform: rotate(-20deg); }
+  50%       { opacity: 0.28; transform: rotate(-14deg); }
+}
+@keyframes wc-beam-sweep-r {
+  0%, 100% { opacity: 0.18; transform: rotate(20deg); }
+  50%       { opacity: 0.28; transform: rotate(14deg); }
+}
+
+/* Subtle diagonal stripe drift */
+@keyframes wc-stripe-drift {
+  from { background-position: 0 0; }
+  to   { background-position: 120px 120px; }
+}
+
+/* Score counter tick */
+@keyframes wc-count-up {
+  from { transform: scaleY(0.8); opacity: 0; }
+  to   { transform: scaleY(1);   opacity: 1; }
+}
+
+/* ─── UTILITY CLASSES ─── */
+
+.wc-float        { animation: wc-float 5.5s ease-in-out infinite; }
+.wc-float-slow   { animation: wc-float 7.5s ease-in-out 1.2s infinite reverse; }
+.wc-float-med    { animation: wc-float 6.2s ease-in-out 2.5s infinite; }
+
+.wc-gold-pulse   { animation: wc-gold-pulse 2.8s ease-in-out infinite; }
+
+.wc-ticker       { animation: wc-ticker 28s linear infinite; }
+
+.wc-slide-up-1   { animation: wc-slide-up 0.7s cubic-bezier(0.22,1,0.36,1) 0.05s both; }
+.wc-slide-up-2   { animation: wc-slide-up 0.7s cubic-bezier(0.22,1,0.36,1) 0.20s both; }
+.wc-slide-up-3   { animation: wc-slide-up 0.7s cubic-bezier(0.22,1,0.36,1) 0.35s both; }
+.wc-slide-up-4   { animation: wc-slide-up 0.7s cubic-bezier(0.22,1,0.36,1) 0.50s both; }
+.wc-slide-up-5   { animation: wc-slide-up 0.7s cubic-bezier(0.22,1,0.36,1) 0.65s both; }
+
+.wc-confetti-1   { animation: wc-confetti 4.6s ease-in 0.0s infinite; }
+.wc-confetti-2   { animation: wc-confetti 5.8s ease-in 0.8s infinite; }
+.wc-confetti-3   { animation: wc-confetti 3.9s ease-in 1.4s infinite; }
+.wc-confetti-4   { animation: wc-confetti 6.5s ease-in 2.2s infinite; }
+.wc-confetti-5   { animation: wc-confetti 4.2s ease-in 3.1s infinite; }
+.wc-confetti-6   { animation: wc-confetti 5.3s ease-in 1.9s infinite; }
+.wc-confetti-7   { animation: wc-confetti 4.9s ease-in 0.5s infinite; }
+.wc-confetti-8   { animation: wc-confetti 3.6s ease-in 2.8s infinite; }
+.wc-confetti-9   { animation: wc-confetti 5.1s ease-in 4.0s infinite; }
+.wc-confetti-10  { animation: wc-confetti 4.4s ease-in 3.5s infinite; }
+
+.wc-beam-l { animation: wc-beam-sweep   4s ease-in-out infinite; }
+.wc-beam-r { animation: wc-beam-sweep-r 4s ease-in-out infinite; }
+
+/* Gold shine animated text */
+.wc-shine-text {
+  background: linear-gradient(
+    90deg,
+    #b45309 0%,
+    #f59e0b 20%,
+    #fef08a 40%,
+    #facc15 50%,
+    #fef08a 60%,
+    #f59e0b 80%,
+    #b45309 100%
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: wc-shine 2.6s linear infinite;
+}
+
+/* Jersey diagonal stripe background layer */
+.wc-jersey-bg {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 55px,
+    rgba(255, 255, 255, 0.014) 55px,
+    rgba(255, 255, 255, 0.014) 110px
+  );
+  animation: wc-stripe-drift 40s linear infinite;
+}
