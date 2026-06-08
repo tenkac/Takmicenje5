@@ -8,6 +8,15 @@ interface Props {
   activePlayer: string;
 }
 
+// ── ADDED PLAYER THEMES TO ACCESS AVATARS ──
+const PLAYER_THEMES: Record<string, { icon: string }> = {
+  "Vlado":  { icon: "/Avatars/vlado.jpg" },
+  "Fika":   { icon: "/Avatars/fika.jpg" },
+  "Labud":  { icon: "/Avatars/labud.jpg" },
+  "Ilija":  { icon: "/Avatars/ilija.jpg" },
+  "Dzoni":  { icon: "/Avatars/dzoni.jpg" },
+};
+
 const INITIAL_GROUPS: Record<string, string[]> = {
   A: ["🇲🇽 Meksiko", "🇿🇦 Južna Afrika", "🇰🇷 Južna Koreja", "🇨🇿 Češka"],
   B: ["🇨🇦 Kanada", "🇧🇦 Bosna i Hercegovina", "🇶🇦 Katar", "🇨🇭 Švajcarska"],
@@ -160,9 +169,6 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 py-8 flex-1 flex flex-col">
         <AnimatePresence mode="wait">
           
-          {/* ========================================================================= */}
-          {/* 📝 VIEW 1: THE EDIT FORM */}
-          {/* ========================================================================= */}
           {viewMode === "edit" && !hasSubmitted && (
             <motion.div 
               key="edit"
@@ -198,7 +204,6 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
                       <Reorder.Group axis="y" values={groups[groupLetter]} onReorder={(newOrder) => handleReorder(groupLetter, newOrder)} className="flex flex-col gap-2">
                         {groups[groupLetter].map((team, idx) => (
                           <Reorder.Item key={team} value={team} className="flex items-center justify-between p-3 rounded-xl bg-black/60 border border-white/5 cursor-grab active:cursor-grabbing hover:bg-white/10 transition-colors shadow-sm">
-                            {/* 👇 EDIT VIEW POSITION BRONZE COLOR TWEAK */}
                             <div className="flex items-center gap-3 pointer-events-none">
                               <span className={`text-sm font-black w-4 text-center ${
                                 idx === 0 ? 'text-yellow-400' : 
@@ -255,9 +260,6 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
             </motion.div>
           )}
 
-          {/* ========================================================================= */}
-          {/* 🔭 VIEW 2: RADAR VIEW (LOCKED BRACKETS) */}
-          {/* ========================================================================= */}
           {viewMode === "radar" && (
             <motion.div 
               key="radar"
@@ -304,8 +306,9 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
                       
                       <div className="flex items-center justify-between mb-8 pl-4 border-b border-white/10 pb-6">
                         <div className="flex items-center gap-4">
-                          <div className="w-14 h-14 rounded-full bg-yellow-400/10 flex items-center justify-center border border-yellow-400/30 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
-                            <span className="text-2xl font-black text-yellow-400">{userData.player.charAt(0)}</span>
+                          {/* 👇 RADAR AVATAR IMPLEMENTATION */}
+                          <div className="w-14 h-14 rounded-full border-2 border-yellow-400/30 overflow-hidden bg-gray-900 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
+                            <img src={PLAYER_THEMES[userData.player]?.icon || "/Avatars/default.jpg"} className="w-full h-full object-cover" alt={userData.player} />
                           </div>
                           <div>
                             <h3 className="text-2xl font-black uppercase text-white tracking-widest leading-none mb-1">{userData.player}</h3>
@@ -356,7 +359,6 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
                                 <div className="flex flex-col gap-1.5">
                                   {(teams as string[]).map((team, idx) => (
                                     <div key={idx} className="flex items-center gap-2 text-[10px]">
-                                      {/* 👇 RADAR DETAILED VIEW POSITION BRONZE COLOR TWEAK */}
                                       <span className={`font-black w-2.5 ${
                                         idx === 0 ? 'text-yellow-400' : 
                                         idx === 1 ? 'text-gray-300' : 
