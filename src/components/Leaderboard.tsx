@@ -44,24 +44,24 @@ export default function Leaderboard({ allBets, onBack, onPlayerClick, onViewStat
     const REAL_RESULTS = {
       // Grupe moraju biti EXACT string sa emojijem (npr: "🇲🇽 Meksiko") jer se to vuče iz Drag&Drop-a
       groups: {
-        A: ["🇲🇽 Meksiko", "🇿🇦 Južna Afrika", "🇰🇷 Južna Koreja", "🇨🇿 Češka"],
-        B: ["🇨🇦 Kanada", "🇧🇦 Bosna i Hercegovina", "🇶🇦 Katar", "🇨🇭 Švajcarska"],
-        C: ["🇧🇷 Brazil", "🇲🇦 Maroko", "🇭🇹 Haiti", "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Škotska"],
-        D: ["🇺🇸 SAD", "🇵🇾 Paragvaj", "🇦🇺 Australija", "🇹🇷 Turska"],
-        E: ["🇩🇪 Nemačka", "🇨🇼 Kurasao", "🇨🇮 Obala Slonovače", "🇪🇨 Ekvador"],
-        F: ["🇳🇱 Holandija", "🇯🇵 Japan", "🇸🇪 Švedska", "🇹🇳 Tunis"],
-        G: ["🇧🇪 Belgija", "🇪🇬 Egipat", "🇮🇷 Iran", "🇳🇿 Novi Zeland"],
-        H: ["🇪🇸 Španija", "🇨🇻 Zelenortska Ostrva", "🇸🇦 Saudijska Arabija", "🇺🇾 Urugvaj"],
-        I: ["🇫🇷 Francuska", "🇸🇳 Senegal", "🇮🇶 Irak", "🇳🇴 Norveška"],
-        J: ["🇦🇷 Argentina", "🇩🇿 Alžir", "🇦🇹 Austrija", "🇯🇴 Jordan"],
-        K: ["🇵🇹 Portugal", "🇨🇩 DR Kongo", "🇺🇿 Uzbekistan", "🇨🇴 Kolumbija"],
-        L: ["🏴󠁧󠁢󠁥󠁮󠁧󠁿 Engleska", "🇭🇷 Hrvatska", "🇬🇭 Gana", "🇵🇦 Panama"],
+        A: [],
+        B: [],
+        C: [],
+        D: [],
+        E: [],
+        F: [],
+        G: [],
+        H: [],
+        I: [],
+        J: [],
+        K: [],
+        L: [],
       } as Record<string, string[]>,
 
       // Polufinalisti, pobednik i kopačka se unose slobodno, pa je provera CASE-INSENSITIVE
-      semis: ["SAD","Brazil", "Francuska", "Holandija"] as string[], // npr: ["SAD", "Brazil", "Francuska", "Holandija"]
-      winner: "Brazil",            // npr: "Brazil"
-      goldenBoot: "Mbappe"         // npr: "Mbappe"
+      semis: [] as string[], // npr: ["SAD", "Brazil", "Francuska", "Holandija"]
+      winner: "",            // npr: "Brazil"
+      goldenBoot: ""         // npr: "Mbappe"
     };
 
     // Helper za ignorisanje velikih/malih slova kod ručno unesenih tekstova (Brazil == brazil)
