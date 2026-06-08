@@ -171,14 +171,13 @@ export default function BettingApp() {
   // 👇 ADDED PREDICTOR VIEW ROUTING
   if (currentView === "predictor") {
     return (
-      <PullToRefresh onRefresh={handleRefresh}>
-        <div className="min-h-screen bg-black">
-          <WCPredictor 
-            onBack={() => setCurrentView("landing")} 
-            activePlayer={getLoggedInPlayerName()} // 👈 CHANGED THIS LINE
-          />
-        </div>
-      </PullToRefresh>
+      // 👇 REMOVE THE <PullToRefresh> WRAPPER FROM HERE
+      <div className="min-h-screen bg-black">
+        <WCPredictor 
+          onBack={() => setCurrentView("landing")} 
+          activePlayer={getLoggedInPlayerName()} 
+        />
+      </div>
     );
   }
 
