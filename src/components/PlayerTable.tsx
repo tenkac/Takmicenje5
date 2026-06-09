@@ -3,6 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { AllPlayersData, PLAYERS, MatchStatus } from '../types';
 import { betSchema } from '../utils/validation';
 import { motion, AnimatePresence } from 'framer-motion';
+// 👇 IMPORT SUPABASE INSTANCE
+import { supabase } from '../lib/supabase';
 
 interface Props {
   allBets: AllPlayersData;
@@ -12,6 +14,7 @@ interface Props {
   onToggleStatus: (date: string, matchKey: "match1" | "match2") => void;
   onBack: () => void;
   userEmail?: string;
+  onDeletePick?: (date: string, playerName: string, matchKey: "match1" | "match2") => void;
 }
 
 const PLAYER_THEMES: Record<string, { text: string, border: string, icon: string, hex: string }> = {
@@ -22,7 +25,7 @@ const PLAYER_THEMES: Record<string, { text: string, border: string, icon: string
   "Dzoni":  { text: "text-yellow-400", border: "border-yellow-500/50", icon: "/Avatars/dzoni.jpg",  hex: "#eab308" },
 };
 
-export default function PlayerTable({ allBets, activePlayer, setActivePlayer, onAddPick, onToggleStatus, onBack, userEmail }: Props) {
+export default function PlayerTable({ allBets, activePlayer, setActivePlayer, onAddPick, onToggleStatus, onBack, userEmail, onDeletePick }: Props) {
   const [form, setForm] = useState({ date: new Date().toLocaleDateString('en-CA'), sport: "⚽", matchName: "", tip: "", odds: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [flashMap, setFlashMap] = useState<Record<string, 'win' | 'loss' | null>>({});
@@ -30,30 +33,33 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
   const [mounted, setMounted] = useState(false);
   const [subTab, setSubTab] = useState<"individual" | "matchday">("individual");
 
+  // ADMIN INLINE EDITING STATE HOOKS
+  const [editingCardKey, setEditingCardKey] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", tip: "", odds: "" });
+
   useEffect(() => {
     setMounted(false);
     setFlashMap({});
     setSpringMap({});
+    setEditingCardKey(null);
     const t = setTimeout(() => setMounted(true), 60);
     return () => clearTimeout(t);
   }, [activePlayer, subTab]);
 
   const ADMIN_EMAIL = "vladoadmin@takmicenje.com";
   const today = new Date().toLocaleDateString('en-CA');
+  const isAdmin = userEmail === ADMIN_EMAIL;
 
-  // Find who is currently logged in
   const loggedInPlayerName = React.useMemo(() => {
     if (!userEmail) return "";
     if (userEmail === ADMIN_EMAIL) return "Admin";
     return PLAYERS.find(p => p.toLowerCase() === userEmail.split('@')[0].toLowerCase()) || "";
   }, [userEmail]);
 
-  // Is the viewer looking at their own profile?
   const isOwner =
     userEmail === ADMIN_EMAIL ||
     (userEmail && userEmail.split('@')[0].toLowerCase() === activePlayer.toLowerCase());
 
-  // 👇 DYNAMIC SECURITY ENGINE: Checks if logged-in user played both picks for a SPECIFIC target date
   const hasUserUnlockedDate = useCallback((targetDate: string) => {
     if (userEmail === ADMIN_EMAIL) return true;
     if (!loggedInPlayerName) return false;
@@ -77,6 +83,8 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
   };
 
   const handleToggle = useCallback((date: string, playerKey: string, matchKey: "match1" | "match2") => {
+    if (editingCardKey) return;
+
     const cardKey = `${date}-${playerKey}-${matchKey}`;
     const row = allBets[playerKey]?.find(r => r.date === date);
     const match = row?.[matchKey];
@@ -99,7 +107,97 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     }
 
     onToggleStatus(date, matchKey);
-  }, [allBets, onToggleStatus]);
+  }, [allBets, onToggleStatus, editingCardKey]);
+
+  // 👇 BUFFED SYSTEM DB ENGINE: Očvršćena pretraga imena pomoću `.ilike` i `.trim()`
+  const executeDirectDbUpdate = async (date: string, matchKey: "match1" | "match2", customValueObj: any) => {
+    const cleanPlayerName = activePlayer.trim();
+    try {
+      // 1. Povuci red koristeći fleksibilni ILIKE filter (rešava problem sa malim/velikim slovima i razmacima)
+      const { data, error: fetchErr } = await supabase
+        .from('player_bets') 
+        .select('bets')
+        .ilike('player_name', cleanPlayerName) 
+        .maybeSingle();
+
+      if (fetchErr || !data) {
+        throw new Error(`Korisnik "${cleanPlayerName}" nije pronađen u bazi podataka.`);
+      }
+
+      const currentBetsArray = Array.isArray(data.bets) ? data.bets : [];
+
+      // 2. Mapiraj niz i izmeni ciljanu utakmicu za prosleđeni datum
+      const updatedBetsArray = currentBetsArray.map((ticket: any) => {
+        if (ticket.date === date) {
+          return {
+            ...ticket,
+            [matchKey]: {
+              ...ticket[matchKey],
+              ...customValueObj
+            }
+          };
+        }
+        return ticket;
+      });
+
+      // 3. Upiši nazad ceo izmenjeni JSON niz u bazu
+      const { data: updateCheck, error: updateErr } = await supabase
+        .from('player_bets')
+        .update({ bets: updatedBetsArray })
+        .ilike('player_name', cleanPlayerName)
+        .select();
+
+      if (updateErr) throw updateErr;
+      
+      if (!updateCheck || updateCheck.length === 0) {
+        alert("⚠️ Greška: Supabase nije uspeo da izvrši izmenu! Osveži stranicu pa pokušaj ponovo.");
+        return;
+      }
+      
+      window.location.reload(); 
+    } catch (err: any) {
+      console.error(err);
+      alert("Greška pri sinhronizaciji baze: " + err.message);
+    }
+  };
+
+  const handleDeleteClick = async (e: React.MouseEvent, date: string, matchKey: "match1" | "match2") => {
+    e.stopPropagation();
+    const confirmed = window.confirm(`Da li sigurno želiš da obrišeš ovaj par (${activePlayer} - ${date})?`);
+    if (!confirmed) return;
+
+    if (onDeletePick) {
+      onDeletePick(date, activePlayer, matchKey);
+    } else {
+      const emptyPayload = { name: "", tip: "", odds: 0, status: "empty", sport: "⚽" };
+      await executeDirectDbUpdate(date, matchKey, emptyPayload);
+    }
+  };
+
+  const handleEditClick = (e: React.MouseEvent, date: string, matchKey: "match1" | "match2", matchObject: any) => {
+    e.stopPropagation();
+    setEditingCardKey(`${date}-${matchKey}`);
+    setEditForm({
+      name: matchObject.name,
+      tip: matchObject.tip,
+      odds: matchObject.odds.toString()
+    });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent, date: string, matchKey: "match1" | "match2") => {
+    e.stopPropagation();
+    const parsedOdds = parseFloat(editForm.odds);
+    if (isNaN(parsedOdds) || parsedOdds <= 0) return alert("Unesite ispravnu kvotu!");
+
+    const editPayload = {
+      name: editForm.name,
+      tip: editForm.tip,
+      odds: parsedOdds
+    };
+
+    await executeDirectDbUpdate(date, matchKey, editPayload);
+    setEditingCardKey(null);
+  };
 
   const getStatusColor = (s: MatchStatus) => {
     if (s === "win")  return "bg-green-500/10 text-green-400 border-green-500/30";
@@ -184,7 +282,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
           <div className="wc-beam-r absolute" style={{ top: 0, right: '25%', width: '250px', height: '60vh', background: 'linear-gradient(178deg, rgba(250,204,21,0.12) 0%, transparent 80%)', filter: 'blur(50px)' }} />
         </div>
 
-        {/* ── STICKY MODERN TOP BAR ── */}
+        {/* ── STICKY TOP BAR ── */}
         <div className="sticky top-0 z-50 backdrop-blur-md bg-[#05091a]/85 border-b border-white/5 px-4 py-3 flex flex-col gap-3">
           <div className="max-w-7xl w-full mx-auto flex justify-between items-center">
             <button onClick={onBack} className="bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full border border-white/10 transition-all active:scale-95">
@@ -194,7 +292,12 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
               <div className="text-[8px] font-black text-yellow-400/60 uppercase tracking-[0.4em] mb-0.5">WORLD CUP 2026</div>
               <h1 className="text-sm md:text-xl font-black uppercase tracking-widest">TAKMIČENJE <span className="text-yellow-400">5.0</span></h1>
             </div>
-            <div className="w-16" />
+            {isAdmin && (
+              <span className="bg-red-500/20 text-red-400 border border-red-500/30 text-[8px] font-black uppercase px-2 py-1 rounded-full tracking-widest animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                Admin Režim
+              </span>
+            )}
+            {!isAdmin && <div className="w-16" />}
           </div>
 
           {/* SUB-TAB TOGGLE */}
@@ -313,8 +416,6 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                     [...allBets[activePlayer]].reverse().map((row, rowIdx) => {
                       const isToday = row.date === today;
                       const isFuture = row.date > today;
-                      
-                      // 👇 UPDATED SECURE CONTROLLER ROW RULES: Validates eligibility day-by-day dynamically
                       const isRowHidden = !isOwner && !hasUserUnlockedDate(row.date);
 
                       return (
@@ -332,22 +433,66 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                             {isRowHidden ? (
                               <div className="col-span-1 md:col-span-2 flex items-center justify-center p-6 bg-black/40 border border-white/5 rounded-xl border-dashed">
                                 <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.25em] flex items-center gap-2">
-                                  🔒 Zaključano dok ne popuniš svoje pickove za ovaj datum
+                                  🔒 Zaključano dok ne popuniš svoj tiket za ovaj datum
                                 </span>
                               </div>
                             ) : (
                               [row.match1, row.match2].map((m, idx) => {
                                 const mKey = idx === 0 ? "match1" : "match2";
-                                const cKey = `${row.date}-${activePlayer}-${mKey}`;
+                                const currentCardId = `${row.date}-${mKey}`;
+                                const isCurrentCardEditing = editingCardKey === currentCardId;
+
                                 return (
-                                  <div key={idx} onClick={() => isOwner && m.status !== 'empty' && handleToggle(row.date, activePlayer, mKey)} className={`p-4 rounded-xl border flex flex-col justify-between min-h-[92px] ${getStatusColor(m.status)} ${isOwner && m.status !== 'empty' ? 'cursor-pointer hover:bg-white/[0.02]' : ''} ${m.status === 'pending' ? 'pending-glow' : ''} ${springMap[cKey] ? 'spring-anim' : ''}`}>
-                                    {flashMap[cKey] && <div className="absolute inset-0 pointer-events-none z-20" style={{ background: flashMap[cKey] === 'win' ? '#22c55e' : '#ef4444', animation: 'flash-overlay 0.5s ease-out both' }} />}
-                                    <div className="flex justify-between items-start gap-2 mb-1">
-                                      <span className="text-[8px] font-black text-white/40 uppercase">{m.sport || "⚽"} PAR {idx + 1}</span>
-                                      {m.status !== 'empty' && <span className={`font-black text-xs px-2 py-0.5 border rounded-md ${getOddsRiskStyle(m.odds)}`}>{m.odds.toFixed(2)}</span>}
-                                    </div>
-                                    <div className="my-1.5 text-xs font-black truncate uppercase text-white">{m.name || "---"}</div>
-                                    <div className="text-[9px] font-black uppercase text-white/40">TIP: <span className="text-white">{m.tip || "---"}</span></div>
+                                  <div 
+                                    key={idx} 
+                                    onClick={() => isOwner && m.status !== 'empty' && handleToggle(row.date, activePlayer, mKey)} 
+                                    className={`p-4 rounded-xl border flex flex-col justify-between min-h-[92px] relative overflow-hidden transition-all ${getStatusColor(m.status)} ${isOwner && m.status !== 'empty' ? 'cursor-pointer hover:bg-white/[0.02]' : 'cursor-default'} ${m.status === 'pending' ? 'pending-glow' : ''} ${springMap[`${row.date}-${activePlayer}-${mKey}`] ? 'spring-anim' : ''}`}
+                                  >
+                                    {flashMap[`${row.date}-${activePlayer}-${mKey}`] && <div className="absolute inset-0 pointer-events-none z-20" style={{ background: flashMap[`${row.date}-${activePlayer}-${mKey}`] === 'win' ? '#22c55e' : '#ef4444', animation: 'flash-overlay 0.5s ease-out both' }} />}
+                                    
+                                    {isCurrentCardEditing ? (
+                                      <div className="flex flex-col gap-1.5 w-full z-40 relative bg-black/90 p-1.5 rounded-lg" onClick={e => e.stopPropagation()}>
+                                        <input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="bg-white/10 text-[11px] px-2 py-1 rounded text-white outline-none w-full uppercase font-bold" placeholder="Naziv Meča" />
+                                        <div className="grid grid-cols-2 gap-1.5">
+                                          <input type="text" value={editForm.tip} onChange={e => setEditForm({...editForm, tip: e.target.value})} className="bg-white/10 text-[11px] px-2 py-1 rounded text-white outline-none text-center font-black" placeholder="Tip" />
+                                          <input type="number" step="0.01" value={editForm.odds} onChange={e => setEditForm({...editForm, odds: e.target.value})} className="bg-white/10 text-[11px] px-2 py-1 rounded text-white outline-none text-center font-black" placeholder="Kvota" />
+                                        </div>
+                                        <div className="flex gap-2 mt-1">
+                                          <button onClick={() => setEditingCardKey(null)} className="w-1/2 py-1 bg-white/10 text-[10px] font-black uppercase rounded text-gray-400">Poništi</button>
+                                          <button onClick={(e) => handleSaveEdit(e, row.date, mKey)} className="w-1/2 py-1 bg-yellow-500 text-[10px] font-black uppercase rounded text-black shadow-md">Sačuvaj</button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <div className="flex justify-between items-start gap-2 mb-1 relative z-10">
+                                          <span className="text-[8px] font-black text-white/40 uppercase">{m.sport || "⚽"} PAR {idx + 1}</span>
+                                          
+                                          <div className="flex items-center gap-1.5 relative z-30">
+                                            {m.status !== 'empty' && <span className={`font-black text-xs px-2 py-0.5 border rounded-md ${getOddsRiskStyle(m.odds)}`}>{m.odds.toFixed(2)}</span>}
+                                            
+                                            {/* ADMIN ACTION TOOLBOX PANEL */}
+                                            {isAdmin && m.status !== 'empty' && (
+                                              <div className="flex items-center gap-1">
+                                                <button 
+                                                  onClick={(e) => handleEditClick(e, row.date, mKey, m)}
+                                                  className="p-1 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500 hover:text-white transition-all text-[10px]"
+                                                >
+                                                  ✏️
+                                                </button>
+                                                <button 
+                                                  onClick={(e) => handleDeleteClick(e, row.date, mKey)}
+                                                  className="p-1 rounded bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white transition-all text-[10px]"
+                                                >
+                                                  🗑️
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="my-1.5 text-xs font-black truncate uppercase text-white">{m.name || "---"}</div>
+                                        <div className="text-[9px] font-black uppercase text-white/40">TIP: <span className="text-white">{m.tip || "---"}</span></div>
+                                      </>
+                                    )}
                                   </div>
                                 );
                               })
@@ -363,8 +508,12 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
               
               /* ─────────────── TAB 2: GROUPED LIVE MATCHDAY FEED ─────────────── */
               <div key="matchday" className="max-w-3xl mx-auto space-y-6 animate-[stagger-in_0.3s_ease-out]">
+                <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 text-center backdrop-blur-md">
+                  <h2 className="text-base font-black text-yellow-400 uppercase tracking-widest">DANAŠNJI OKRŠAJI ⚔️</h2>
+                  <p className="text-[9px] font-bold text-gray-500 uppercase tracking-[0.18em] mt-0.5">Hronološki pregled po igračima za datum: {today.split('-').reverse().join('.')}</p>
+                </div>
+
                 <div className="space-y-6">
-                  {/* 👇 FIXED AGGREGATOR LOCKOUT LAYER: Evaluates your locks exclusively for the CURRENT calendar day */}
                   {!hasUserUnlockedDate(today) ? (
                     <div className="p-12 text-center rounded-3xl bg-black/40 border border-white/5 flex flex-col items-center justify-center py-16 gap-3 border-dashed">
                       <span className="text-3xl">🔒</span>
