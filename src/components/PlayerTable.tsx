@@ -38,7 +38,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     return () => clearTimeout(t);
   }, [activePlayer, subTab]);
 
-  const ADMIN_EMAIL = "vlado@takmicenje.com";
+  const ADMIN_EMAIL = "vladoadmin@takmicenje.com";
   const today = new Date().toLocaleDateString('en-CA');
 
   // Find who is currently logged in
@@ -332,7 +332,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                             {isRowHidden ? (
                               <div className="col-span-1 md:col-span-2 flex items-center justify-center p-6 bg-black/40 border border-white/5 rounded-xl border-dashed">
                                 <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.25em] flex items-center gap-2">
-                                  🔒 Zaključano dok ne popuniš svoj tiket za ovaj datum
+                                  🔒 Zaključano dok ne popuniš svoje pickove za ovaj datum
                                 </span>
                               </div>
                             ) : (
@@ -370,12 +370,12 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                       <span className="text-3xl">🔒</span>
                       <h3 className="text-sm font-black text-gray-300 uppercase tracking-wider">Pregled je zaključan!</h3>
                       <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-relaxed max-w-sm mx-auto">
-                        Moraš uneti **oba svoja para** za danas pre nego što dobiješ dozvolu da vidiš šta igra ostatak grupe.
+                        Moraš unijeti **oba svoja para** za danas prije nego što dobiješ dozvolu da vidiš šta igra ostatak grupe.
                       </p>
                     </div>
                   ) : Object.keys(groupedMatchdayPicks.groups).length === 0 ? (
                     <div className="p-16 text-center text-xs font-black uppercase tracking-widest text-gray-600 bg-white/5 border border-white/5 rounded-3xl">
-                      Niko još nije uneo parove za danas.
+                      Niko još nije unio parove za danas.
                     </div>
                   ) : (
                     Object.entries(groupedMatchdayPicks.groups).map(([player, picks]) => {
