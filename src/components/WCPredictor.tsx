@@ -8,7 +8,6 @@ interface Props {
   activePlayer: string;
 }
 
-// ── ADDED PLAYER THEMES TO ACCESS AVATARS ──
 const PLAYER_THEMES: Record<string, { icon: string }> = {
   "Vlado":  { icon: "/Avatars/vlado.jpg" },
   "Fika":   { icon: "/Avatars/fika.jpg" },
@@ -85,11 +84,6 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
     };
     fetchPredictions();
   }, [activePlayer]);
-
-  const handleOpenRadar = async () => {
-    await loadRadarData();
-    setViewMode("radar");
-  };
 
   const handleReorder = (groupLetter: string, newOrder: string[]) => {
     setGroups(prev => ({ ...prev, [groupLetter]: newOrder }));
@@ -169,6 +163,9 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 py-8 flex-1 flex flex-col">
         <AnimatePresence mode="wait">
           
+          {/* ========================================================================= */}
+          {/* 📝 VIEW 1: THE EDIT FORM */}
+          {/* ========================================================================= */}
           {viewMode === "edit" && !hasSubmitted && (
             <motion.div 
               key="edit"
@@ -186,9 +183,8 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
                   <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter text-yellow-400" style={{ textShadow: '0 0 20px rgba(250,204,21,0.3)' }}>WORLD CUP PREDICTOR</h1>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em] mt-1">48 Nacija · 12 Grupa</p>
                 </div>
-                <button onClick={handleOpenRadar} className="px-4 py-2 flex items-center gap-2 rounded-full bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 hover:bg-yellow-400/20 transition-all text-[10px] font-black uppercase tracking-widest">
-                  <span className="text-sm">🔭</span><span className="hidden md:inline">Sve Prognoze</span>
-                </button>
+                {/* 👇 REMOVED THE "SVE PROGNOZE" RADAR BUTTON SO THEY CANNOT PEEK */}
+                <div className="w-[85px] sm:w-[110px]" /> 
               </div>
 
               <div className="mb-12">
@@ -260,6 +256,9 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
             </motion.div>
           )}
 
+          {/* ========================================================================= */}
+          {/* 🔭 VIEW 2: RADAR VIEW (LOCKED BRACKETS) */}
+          {/* ========================================================================= */}
           {viewMode === "radar" && (
             <motion.div 
               key="radar"
@@ -270,16 +269,9 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
               className="flex flex-col w-full pb-16"
             >
               <div className="flex items-center justify-between mb-12">
-                {hasSubmitted ? (
-                   <button onClick={onBack} className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 transition-all border border-white/20 backdrop-blur-md">
-                     ← Glavni Meni
-                   </button>
-                ) : (
-                  <button onClick={() => setViewMode("edit")} className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 transition-all border border-white/20 backdrop-blur-md">
-                    ← Nazad na izmenu
-                  </button>
-                )}
-                
+                <button onClick={onBack} className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 transition-all border border-white/20 backdrop-blur-md">
+                  ← Glavni Meni
+                </button>
                 <div className="text-center hidden md:block">
                   <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">
                     ZAKLJUČANE <span className="text-yellow-400">PROGNOZE</span>
@@ -306,7 +298,6 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
                       
                       <div className="flex items-center justify-between mb-8 pl-4 border-b border-white/10 pb-6">
                         <div className="flex items-center gap-4">
-                          {/* 👇 RADAR AVATAR IMPLEMENTATION */}
                           <div className="w-14 h-14 rounded-full border-2 border-yellow-400/30 overflow-hidden bg-gray-900 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
                             <img src={PLAYER_THEMES[userData.player]?.icon || "/Avatars/default.jpg"} className="w-full h-full object-cover" alt={userData.player} />
                           </div>
