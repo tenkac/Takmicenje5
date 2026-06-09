@@ -136,11 +136,6 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
     fetchPredictions();
   }, [activePlayer]);
 
-  const handleOpenRadar = async () => {
-    await loadRadarData();
-    setViewMode("radar");
-  };
-
   const handleReorder = (groupLetter: string, newOrder: string[]) => {
     setGroups(prev => ({ ...prev, [groupLetter]: newOrder }));
   };
@@ -236,9 +231,8 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
                   <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter text-yellow-400" style={{ textShadow: '0 0 20px rgba(250,204,21,0.3)' }}>WORLD CUP PREDICTOR</h1>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em] mt-1">48 Nacija · 12 Grupa</p>
                 </div>
-                <button onClick={handleOpenRadar} className="px-4 py-2 flex items-center gap-2 rounded-full bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 hover:bg-yellow-400/20 transition-all text-[10px] font-black uppercase tracking-widest">
-                  <span className="text-sm">🔭</span><span className="hidden md:inline">Sve Prognoze</span>
-                </button>
+                {/* 👇 SEE ALL / RADAR BUTTON HAS BEEN REMOVED FROM HERE */}
+                <div className="w-16" />
               </div>
 
               {/* FAZA PO GRUPAMA */}
@@ -277,14 +271,13 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
                 </div>
               </div>
 
-              {/* ZAVRŠNICA SA DROPDOWN MENIJIMA I ZASTAVICAMA */}
+              {/* ZAVRŠNICA */}
               <div className="mb-12">
                 <h2 className="text-xl font-black uppercase tracking-widest mb-6 flex items-center gap-3">
                   <span className="text-2xl">⚔️</span> Završnica
                 </h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   
-                  {/* POLUFINALISTI DROPDOWNS */}
                   <div className="p-6 rounded-3xl bg-white/5 border border-white/5">
                     <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">4 Polufinalista</h3>
                     <div className="grid grid-cols-2 gap-3">
@@ -308,7 +301,6 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
                     </div>
                   </div>
 
-                  {/* OSVAJAČ DROPDOWN & DNEVNA KOPAČKA (KOPAČKA OSTAJE INPUT) */}
                   <div className="p-6 rounded-3xl bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-yellow-400/20 shadow-xl flex flex-col gap-4">
                     <div>
                       <h3 className="text-sm font-black text-yellow-400 uppercase tracking-widest mb-2 flex items-center gap-2">🏆 Osvajač</h3>
@@ -351,15 +343,9 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
               className="flex flex-col w-full pb-16"
             >
               <div className="flex items-center justify-between mb-12">
-                {hasSubmitted ? (
-                   <button onClick={onBack} className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 transition-all border border-white/20 backdrop-blur-md">
-                     ← Glavni Meni
-                   </button>
-                ) : (
-                  <button onClick={() => setViewMode("edit")} className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 transition-all border border-white/20 backdrop-blur-md">
-                    ← Nazad na izmenu
-                  </button>
-                )}
+                <button onClick={onBack} className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 transition-all border border-white/20 backdrop-blur-md">
+                  ← Glavni Meni
+                </button>
                 
                 <div className="text-center hidden md:block">
                   <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">
