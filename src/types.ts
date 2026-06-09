@@ -31,3 +31,4 @@ export const EMPTY_MATCH: Match = {
   odds: 0, 
   status: "empty",
 };
+

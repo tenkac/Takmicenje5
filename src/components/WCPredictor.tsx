@@ -16,12 +16,63 @@ const PLAYER_THEMES: Record<string, { icon: string }> = {
   "Dzoni":  { icon: "/Avatars/dzoni.jpg" },
 };
 
+const SP2026_DRZAVE = [
+  { name: "Alžir", emoji: "🇩🇿" },
+  { name: "Argentina", emoji: "🇦🇷" },
+  { name: "Australija", emoji: "🇦🇺" },
+  { name: "Austrija", emoji: "🇦🇹" },
+  { name: "Belgija", emoji: "🇧🇪" },
+  { name: "Bosna i Hercegovina", emoji: "🇧🇦" },
+  { name: "Brazil", emoji: "🇧🇷" },
+  { name: "Češka", emoji: "🇨🇿" },
+  { name: "DR Kongo", emoji: "🇨🇩" },
+  { name: "Egipat", emoji: "🇪🇬" },
+  { name: "Ekvador", emoji: "🇪🇨" },
+  { name: "Engleska", emoji: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
+  { name: "Francuska", emoji: "🇫🇷" },
+  { name: "Gana", emoji: "🇬🇭" },
+  { name: "Haiti", emoji: "🇭🇹" },
+  { name: "Holandija", emoji: "🇳🇱" },
+  { name: "Hrvatska", emoji: "🇭🇷" },
+  { name: "Irak", emoji: "🇮🇶" },
+  { name: "Iran", emoji: "🇮🇷" },
+  { name: "Japan", emoji: "🇯🇵" },
+  { name: "Jordan", emoji: "🇯🇴" },
+  { name: "Južna Afrika", emoji: "🇿🇦" },
+  { name: "Južna Koreja", emoji: "🇰🇷" },
+  { name: "Kanada", emoji: "🇨🇦" },
+  { name: "Katar", emoji: "🇶🇦" },
+  { name: "Kolumbija", emoji: "🇨🇴" },
+  { name: "Kurasao", emoji: "🇨🇼" },
+  { name: "Maroko", emoji: "🇲🇦" },
+  { name: "Meksiko", emoji: "🇲🇽" },
+  { name: "Njemačka", emoji: "🇩🇪" },
+  { name: "Norveška", emoji: "🇳🇴" },
+  { name: "Novi Zeland", emoji: "🇳🇿" },
+  { name: "Obala Slonovače", emoji: "🇨🇮" },
+  { name: "Panama", emoji: "🇵🇦" },
+  { name: "Paragvaj", emoji: "🇵🇾" },
+  { name: "Portugal", emoji: "🇵🇹" },
+  { name: "SAD", emoji: "🇺🇸" },
+  { name: "Saudijska Arabija", emoji: "🇸🇦" },
+  { name: "Senegal", emoji: "🇸🇳" },
+  { name: "Škotska", emoji: "🏴󠁧󠁢󠁳󠁣󠁴󠁿" },
+  { name: "Španija", emoji: "🇪🇸" },
+  { name: "Švedska", emoji: "🇸🇪" },
+  { name: "Švajcarska", emoji: "🇨🇭" },
+  { name: "Tunis", emoji: "🇹🇳" },
+  { name: "Turska", emoji: "🇹🇷" },
+  { name: "Urugvaj", emoji: "🇺🇾" },
+  { name: "Uzbekistan", emoji: "🇺🇿" },
+  { name: "Zelenortska Ostrva", emoji: "🇨🇻" }
+].sort((a, b) => a.name.localeCompare(b.name));
+
 const INITIAL_GROUPS: Record<string, string[]> = {
   A: ["🇲🇽 Meksiko", "🇿🇦 Južna Afrika", "🇰🇷 Južna Koreja", "🇨🇿 Češka"],
   B: ["🇨🇦 Kanada", "🇧🇦 Bosna i Hercegovina", "🇶🇦 Katar", "🇨🇭 Švajcarska"],
   C: ["🇧🇷 Brazil", "🇲🇦 Maroko", "🇭🇹 Haiti", "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Škotska"],
   D: ["🇺🇸 SAD", "🇵🇾 Paragvaj", "🇦🇺 Australija", "🇹🇷 Turska"],
-  E: ["🇩🇪 Nemačka", "🇨🇼 Kurasao", "🇨🇮 Obala Slonovače", "🇪🇨 Ekvador"],
+  E: ["🇩🇪 Njemačka", "🇨🇼 Kurasao", "🇨🇮 Obala Slonovače", "🇪🇨 Ekvador"],
   F: ["🇳🇱 Holandija", "🇯🇵 Japan", "🇸🇪 Švedska", "🇹🇳 Tunis"],
   G: ["🇧🇪 Belgija", "🇪🇬 Egipat", "🇮🇷 Iran", "🇳🇿 Novi Zeland"],
   H: ["🇪🇸 Španija", "🇨🇻 Zelenortska Ostrva", "🇸🇦 Saudijska Arabija", "🇺🇾 Urugvaj"],
@@ -84,6 +135,11 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
     };
     fetchPredictions();
   }, [activePlayer]);
+
+  const handleOpenRadar = async () => {
+    await loadRadarData();
+    setViewMode("radar");
+  };
 
   const handleReorder = (groupLetter: string, newOrder: string[]) => {
     setGroups(prev => ({ ...prev, [groupLetter]: newOrder }));
@@ -163,9 +219,6 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 py-8 flex-1 flex flex-col">
         <AnimatePresence mode="wait">
           
-          {/* ========================================================================= */}
-          {/* 📝 VIEW 1: THE EDIT FORM */}
-          {/* ========================================================================= */}
           {viewMode === "edit" && !hasSubmitted && (
             <motion.div 
               key="edit"
@@ -183,10 +236,12 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
                   <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter text-yellow-400" style={{ textShadow: '0 0 20px rgba(250,204,21,0.3)' }}>WORLD CUP PREDICTOR</h1>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em] mt-1">48 Nacija · 12 Grupa</p>
                 </div>
-                {/* 👇 REMOVED THE "SVE PROGNOZE" RADAR BUTTON SO THEY CANNOT PEEK */}
-                <div className="w-[85px] sm:w-[110px]" /> 
+                <button onClick={handleOpenRadar} className="px-4 py-2 flex items-center gap-2 rounded-full bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 hover:bg-yellow-400/20 transition-all text-[10px] font-black uppercase tracking-widest">
+                  <span className="text-sm">🔭</span><span className="hidden md:inline">Sve Prognoze</span>
+                </button>
               </div>
 
+              {/* FAZA PO GRUPAMA */}
               <div className="mb-12">
                 <h2 className="text-xl font-black uppercase tracking-widest mb-6 flex items-center gap-3">
                   <span className="text-2xl">📋</span> Faza po Grupama
@@ -222,29 +277,58 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
                 </div>
               </div>
 
+              {/* ZAVRŠNICA SA DROPDOWN MENIJIMA I ZASTAVICAMA */}
               <div className="mb-12">
                 <h2 className="text-xl font-black uppercase tracking-widest mb-6 flex items-center gap-3">
                   <span className="text-2xl">⚔️</span> Završnica
                 </h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  
+                  {/* POLUFINALISTI DROPDOWNS */}
                   <div className="p-6 rounded-3xl bg-white/5 border border-white/5">
                     <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">4 Polufinalista</h3>
                     <div className="grid grid-cols-2 gap-3">
                       {semis.map((team, i) => (
-                        <input key={i} type="text" placeholder={`Ekipa ${i + 1}`} value={team} onChange={(e) => { const newSemis = [...semis]; newSemis[i] = e.target.value; setSemis(newSemis); }} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-yellow-400 uppercase transition-colors" />
+                        <select 
+                          key={i} 
+                          value={team} 
+                          onChange={(e) => { 
+                            const newSemis = [...semis]; 
+                            newSemis[i] = e.target.value; 
+                            setSemis(newSemis); 
+                          }} 
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-3 text-sm font-bold text-white outline-none focus:border-yellow-400 uppercase transition-colors"
+                        >
+                          <option value="">Ekipa {i + 1}...</option>
+                          {SP2026_DRZAVE.map(d => (
+                            <option key={d.name} value={`${d.emoji} ${d.name}`}>{d.emoji} {d.name}</option>
+                          ))}
+                        </select>
                       ))}
                     </div>
                   </div>
-                  <div className="p-6 rounded-3xl flex flex-col gap-4 border border-yellow-400/20" style={{ background: 'linear-gradient(140deg, rgba(250,204,21,0.08) 0%, rgba(0,0,0,0) 100%)' }}>
+
+                  {/* OSVAJAČ DROPDOWN & DNEVNA KOPAČKA (KOPAČKA OSTAJE INPUT) */}
+                  <div className="p-6 rounded-3xl bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-yellow-400/20 shadow-xl flex flex-col gap-4">
                     <div>
                       <h3 className="text-sm font-black text-yellow-400 uppercase tracking-widest mb-2 flex items-center gap-2">🏆 Osvajač</h3>
-                      <input type="text" placeholder="Ime države" value={winner} onChange={(e) => setWinner(e.target.value)} className="w-full bg-black/40 border border-yellow-400/20 rounded-xl px-4 py-3 text-sm font-black text-white outline-none focus:border-yellow-400 uppercase transition-colors" />
+                      <select 
+                        value={winner} 
+                        onChange={(e) => setWinner(e.target.value)} 
+                        className="w-full bg-black/40 border border-yellow-400/20 rounded-xl px-4 py-3 text-sm font-black text-white outline-none focus:border-yellow-400 uppercase transition-colors"
+                      >
+                        <option value="">Izaberi šampiona...</option>
+                        {SP2026_DRZAVE.map(d => (
+                          <option key={d.name} value={`${d.emoji} ${d.name}`}>{d.emoji} {d.name}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <h3 className="text-sm font-black text-yellow-400 uppercase tracking-widest mb-2 flex items-center gap-2">👟 Zlatna Kopačka</h3>
-                      <input type="text" placeholder="Ime igrača" value={goldenBoot} onChange={(e) => setGoldenBoot(e.target.value)} className="w-full bg-black/40 border border-yellow-400/20 rounded-xl px-4 py-3 text-sm font-black text-white outline-none focus:border-yellow-400 uppercase transition-colors" />
+                      <input type="text" placeholder="Ime igrača (Kucaj ručno)" value={goldenBoot} onChange={(e) => setGoldenBoot(e.target.value)} className="w-full bg-black/40 border border-yellow-400/20 rounded-xl px-4 py-3 text-sm font-black text-white outline-none focus:border-yellow-400 uppercase transition-colors" />
                     </div>
                   </div>
+
                 </div>
               </div>
 
@@ -256,9 +340,7 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
             </motion.div>
           )}
 
-          {/* ========================================================================= */}
-          {/* 🔭 VIEW 2: RADAR VIEW (LOCKED BRACKETS) */}
-          {/* ========================================================================= */}
+          {/* SVE PROGNOZE (RADAR VIEW) */}
           {viewMode === "radar" && (
             <motion.div 
               key="radar"
@@ -269,9 +351,16 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
               className="flex flex-col w-full pb-16"
             >
               <div className="flex items-center justify-between mb-12">
-                <button onClick={onBack} className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 transition-all border border-white/20 backdrop-blur-md">
-                  ← Glavni Meni
-                </button>
+                {hasSubmitted ? (
+                   <button onClick={onBack} className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 transition-all border border-white/20 backdrop-blur-md">
+                     ← Glavni Meni
+                   </button>
+                ) : (
+                  <button onClick={() => setViewMode("edit")} className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 transition-all border border-white/20 backdrop-blur-md">
+                    ← Nazad na izmenu
+                  </button>
+                )}
+                
                 <div className="text-center hidden md:block">
                   <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">
                     ZAKLJUČANE <span className="text-yellow-400">PROGNOZE</span>
