@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AllPlayersData, PLAYERS, MatchStatus } from '../types';
 import { betSchema } from '../utils/validation';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
   allBets: AllPlayersData;
@@ -27,6 +28,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
   const [flashMap, setFlashMap] = useState<Record<string, 'win' | 'loss' | null>>({});
   const [springMap, setSpringMap] = useState<Record<string, boolean>>({});
   const [mounted, setMounted] = useState(false);
+  const [subTab, setSubTab] = useState<"individual" | "matchday">("individual");
 
   useEffect(() => {
     setMounted(false);
@@ -34,12 +36,33 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     setSpringMap({});
     const t = setTimeout(() => setMounted(true), 60);
     return () => clearTimeout(t);
-  }, [activePlayer]);
+  }, [activePlayer, subTab]);
 
   const ADMIN_EMAIL = "vlado@takmicenje.com";
+  const today = new Date().toLocaleDateString('en-CA');
+
+  // Find who is currently logged in
+  const loggedInPlayerName = React.useMemo(() => {
+    if (!userEmail) return "";
+    if (userEmail === ADMIN_EMAIL) return "Admin";
+    return PLAYERS.find(p => p.toLowerCase() === userEmail.split('@')[0].toLowerCase()) || "";
+  }, [userEmail]);
+
+  // Is the viewer looking at their own profile?
   const isOwner =
     userEmail === ADMIN_EMAIL ||
     (userEmail && userEmail.split('@')[0].toLowerCase() === activePlayer.toLowerCase());
+
+  // 👇 DYNAMIC SECURITY ENGINE: Checks if logged-in user played both picks for a SPECIFIC target date
+  const hasUserUnlockedDate = useCallback((targetDate: string) => {
+    if (userEmail === ADMIN_EMAIL) return true;
+    if (!loggedInPlayerName) return false;
+
+    const userRowForDate = allBets[loggedInPlayerName]?.find(r => r.date === targetDate);
+    if (!userRowForDate) return false;
+
+    return userRowForDate.match1.status !== 'empty' && userRowForDate.match2.status !== 'empty';
+  }, [allBets, loggedInPlayerName, userEmail]);
 
   const handleAdd = async () => {
     if (isSubmitting) return;
@@ -53,9 +76,9 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     finally { setTimeout(() => setIsSubmitting(false), 1000); }
   };
 
-  const handleToggle = useCallback((date: string, matchKey: "match1" | "match2") => {
-    const cardKey = `${date}-${matchKey}`;
-    const row = allBets[activePlayer]?.find(r => r.date === date);
+  const handleToggle = useCallback((date: string, playerKey: string, matchKey: "match1" | "match2") => {
+    const cardKey = `${date}-${playerKey}-${matchKey}`;
+    const row = allBets[playerKey]?.find(r => r.date === date);
     const match = row?.[matchKey];
     if (!match || match.status === 'empty') return;
 
@@ -76,7 +99,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     }
 
     onToggleStatus(date, matchKey);
-  }, [allBets, activePlayer, onToggleStatus]);
+  }, [allBets, onToggleStatus]);
 
   const getStatusColor = (s: MatchStatus) => {
     if (s === "win")  return "bg-green-500/10 text-green-400 border-green-500/30";
@@ -84,7 +107,12 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     return "bg-orange-500/5 text-orange-300 border-orange-500/20";
   };
 
-  // Compute Quick Stats for the Active Player card
+  const getOddsRiskStyle = (odds: number) => {
+    if (odds < 1.50) return "text-gray-400 border-white/5 bg-white/5"; 
+    if (odds <= 2.50) return "text-blue-400 border-blue-500/20 bg-blue-500/5"; 
+    return "text-amber-400 border-amber-500/30 bg-amber-500/10 shadow-[0_0_10px_rgba(245,158,11,0.1)]"; 
+  };
+
   const playerStats = React.useMemo(() => {
     const rows = allBets[activePlayer] || [];
     let wins = 0, pending = 0, totalOdds = 0;
@@ -95,14 +123,33 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     return { wins, pending, score: totalOdds.toFixed(2) };
   }, [allBets, activePlayer]);
 
-  const today = new Date().toLocaleDateString('en-CA');
-  const pt = PLAYER_THEMES[activePlayer];
+  const groupedMatchdayPicks = React.useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    let totalCount = 0;
+
+    PLAYERS.forEach(player => {
+      const todayRow = allBets[player]?.find(r => r.date === today);
+      if (todayRow) {
+        const picks: any[] = [];
+        if (todayRow.match1.status !== 'empty') picks.push({ match: todayRow.match1, matchKey: 'match1' });
+        if (todayRow.match2.status !== 'empty') picks.push({ match: todayRow.match2, matchKey: 'match2' });
+        
+        if (picks.length > 0) {
+          groups[player] = picks;
+          totalCount += picks.length;
+        }
+      }
+    });
+    return { groups, totalCount };
+  }, [allBets, today]);
+
+  const pt = PLAYER_THEMES[activePlayer] || { text: "text-white", border: "border-white/10", icon: "/Avatars/default.jpg", hex: "#ffffff" };
 
   return (
     <>
       <style>{`
         @keyframes stagger-in {
-          from { opacity: 0; transform: translateY(20px); }
+          from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
         }
         @keyframes card-spring {
@@ -130,7 +177,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
         className="min-h-screen text-white font-sans relative overflow-y-auto"
         style={{ background: 'linear-gradient(165deg, #05091a 0%, #080d20 45%, #040810 100%)' }}
       >
-        {/* WC Background Layers */}
+        {/* Background Layers */}
         <div className="fixed inset-0 wc-jersey-bg pointer-events-none" />
         <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
           <div className="wc-beam-l absolute" style={{ top: 0, left: '25%', width: '250px', height: '60vh', background: 'linear-gradient(178deg, rgba(250,204,21,0.12) 0%, transparent 80%)', filter: 'blur(50px)' }} />
@@ -150,199 +197,238 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
             <div className="w-16" />
           </div>
 
-          {/* 👇 LARGER CAROUSEL SELECTOR: Expanded for flawless touch mechanics on mobile */}
-          <div 
-            className="max-w-7xl w-full mx-auto flex gap-3 overflow-x-auto no-scrollbar py-2.5 px-4 -mx-4 scroll-smooth overscroll-contain touch-pan-x snap-x"
-            onTouchMove={(e) => e.stopPropagation()} 
-          >
-            {PLAYERS.map(p => {
-              const isActive = activePlayer === p;
-              const theme = PLAYER_THEMES[p];
-              return (
-                <button
-                  key={p}
-                  onClick={() => setActivePlayer(p)}
-                  className={`flex items-center gap-3 px-5 py-3 rounded-full border transition-all duration-300 relative shrink-0 snap-inline ${
-                    isActive 
-                      ? `${theme.border} bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] scale-100` 
-                      : 'border-white/5 bg-black/40 opacity-50 hover:opacity-100 active:scale-95'
-                  }`}
-                >
-                  <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20 relative pointer-events-none">
-                    <img src={theme.icon} className="w-full h-full object-cover" alt={p} />
-                  </div>
-                  <span className="text-xs font-black uppercase tracking-widest pointer-events-none">{p}</span>
-                  {isActive && (
-                    <span className="w-2 h-2 rounded-full absolute -top-0.5 -right-0.5 animate-pulse" style={{ backgroundColor: theme.hex }} />
-                  )}
-                </button>
-              );
-            })}
+          {/* SUB-TAB TOGGLE */}
+          <div className="max-w-7xl w-full mx-auto grid grid-cols-2 bg-black/40 border border-white/5 p-1 rounded-xl">
+            <button 
+              onClick={() => setSubTab("individual")}
+              className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${subTab === "individual" ? "bg-white/10 text-white shadow-md" : "text-gray-500 hover:text-white"}`}
+            >
+              👤 PO PROFILIMA
+            </button>
+            <button 
+              onClick={() => setSubTab("matchday")}
+              className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all relative ${subTab === "matchday" ? "bg-white/10 text-white shadow-md" : "text-gray-500 hover:text-white"}`}
+            >
+              ⚡ SVI DANAS
+              {groupedMatchdayPicks.totalCount > 0 && (
+                <span className="absolute top-1 right-2 bg-yellow-500 text-black font-black font-sans text-[8px] px-1.5 py-0.5 rounded-full leading-none">
+                  {groupedMatchdayPicks.totalCount}
+                </span>
+              )}
+            </button>
           </div>
+
+          {/* HORIZONTAL CAROUSEL SELECTOR */}
+          {subTab === "individual" && (
+            <div 
+              className="max-w-7xl w-full mx-auto flex gap-3 overflow-x-auto no-scrollbar py-1 px-4 -mx-4 scroll-smooth overscroll-contain touch-pan-x snap-x animate-[stagger-in_0.2s_ease-out]"
+              onTouchMove={(e) => e.stopPropagation()} 
+            >
+              {PLAYERS.map(p => {
+                const isActive = activePlayer === p;
+                const theme = PLAYER_THEMES[p];
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setActivePlayer(p)}
+                    className={`flex items-center gap-3 px-5 py-3 rounded-full border transition-all duration-300 relative shrink-0 snap-inline ${
+                      isActive 
+                        ? `${theme.border} bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] scale-100` 
+                        : 'border-white/5 bg-black/40 opacity-50 hover:opacity-100 active:scale-95'
+                    }`}
+                  >
+                    <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20 relative pointer-events-none">
+                      <img src={theme.icon} className="w-full h-full object-cover" alt={p} />
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-widest pointer-events-none">{p}</span>
+                    {isActive && (
+                      <span className="w-2 h-2 rounded-full absolute -top-0.5 -right-0.5 animate-pulse" style={{ backgroundColor: theme.hex }} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* ── TWO-COLUMN SPLIT ARENA ── */}
-        <div className="max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 relative z-10">
-          
-          {/* COLUMN 1: SIDE PANEL (Sticky Control Tower) */}
-          <div className="flex flex-col gap-6 lg:sticky lg:top-[140px] lg:h-[calc(100vh-180px)]">
+        {/* ── MAIN LAYOUT HUB ── */}
+        <div className="max-w-7xl mx-auto p-4 md:p-8 relative z-10">
+          <AnimatePresence mode="wait">
             
-            {/* ACTIVE PLAYER HERO DISPLAY CARD */}
-            <div className="p-6 rounded-3xl bg-white/5 border border-white/5 relative overflow-hidden backdrop-blur-md">
-              <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: pt.hex }} />
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white/10">
-                  <img src={pt.icon} className="w-full h-full object-cover" alt={activePlayer} />
-                </div>
-                <div>
-                  <h2 className={`text-2xl font-black uppercase tracking-tight ${pt.text}`}>{activePlayer}</h2>
-                  <span className="text-[9px] font-bold tracking-widest text-gray-400 uppercase">Profil Takmičara</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-white/5">
-                <div className="bg-black/30 p-2.5 rounded-xl">
-                  <span className="block text-xs font-black text-white">{playerStats.score}</span>
-                  <span className="text-[8px] font-bold text-gray-500 uppercase">Skor</span>
-                </div>
-                <div className="bg-black/30 p-2.5 rounded-xl">
-                  <span className="block text-xs font-black text-green-400">{playerStats.wins}</span>
-                  <span className="text-[8px] font-bold text-gray-500 uppercase">Pogodaka</span>
-                </div>
-                <div className="bg-black/30 p-2.5 rounded-xl">
-                  <span className="block text-xs font-black text-orange-400">{playerStats.pending}</span>
-                  <span className="text-[8px] font-bold text-gray-500 uppercase">Čeka</span>
-                </div>
-              </div>
-            </div>
-
-            {/* ACTION PANEL (Form Box) */}
-            {isOwner && (
-              <div className="p-6 rounded-3xl bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-yellow-400/20 shadow-xl flex flex-col gap-3.5">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-400/70 flex items-center gap-2">⚽ UNESI NOVI PAR</h3>
-                
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-[8px] font-black uppercase tracking-widest text-gray-500 pl-1">Datum utakmice</span>
-                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
-                    className="w-full h-[46px] bg-black/50 border border-white/10 rounded-xl px-3 text-xs outline-none focus:border-yellow-400/50 text-white transition-colors" />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-[8px] font-black uppercase tracking-widest text-gray-500 pl-1">Naziv meča</span>
-                  <input placeholder="Npr. Francuska - Poljska" value={form.matchName} onChange={e => setForm({ ...form, matchName: e.target.value })}
-                    className="w-full h-[46px] bg-black/50 border border-white/10 rounded-xl px-4 text-xs outline-none focus:border-yellow-400/50 text-white transition-colors" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-gray-500 pl-1">Tip prognoze</span>
-                    <input placeholder="Npr. GG" value={form.tip} onChange={e => setForm({ ...form, tip: e.target.value })}
-                      className="w-full h-[46px] bg-black/50 border border-white/10 rounded-xl px-3 text-xs outline-none focus:border-yellow-400/50 text-center text-white transition-colors" />
+            {/* ─────────────── TAB 1: INDIVIDUAL PROFILES ─────────────── */}
+            {subTab === "individual" ? (
+              <div key="individual" className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8">
+                <div className="flex flex-col gap-6 lg:sticky lg:top-[190px] lg:h-[calc(100vh-230px)]">
+                  <div className="p-6 rounded-3xl bg-white/5 border border-white/5 relative overflow-hidden backdrop-blur-md">
+                    <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: pt.hex }} />
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white/10">
+                        <img src={pt.icon} className="w-full h-full object-cover" alt={activePlayer} />
+                      </div>
+                      <div>
+                        <h2 className={`text-2xl font-black uppercase tracking-tight ${pt.text}`}>{activePlayer}</h2>
+                        <span className="text-[9px] font-bold tracking-widest text-gray-400 uppercase">Profil Takmičara</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-white/5">
+                      <div className="bg-black/30 p-2.5 rounded-xl">
+                        <span className="block text-xs font-black text-white">{playerStats.score}</span>
+                        <span className="text-[8px] font-bold text-gray-500 uppercase">Skor</span>
+                      </div>
+                      <div className="bg-black/30 p-2.5 rounded-xl">
+                        <span className="block text-xs font-black text-green-400">{playerStats.wins}</span>
+                        <span className="text-[8px] font-bold text-gray-500 uppercase">Pogodaka</span>
+                      </div>
+                      <div className="bg-black/30 p-2.5 rounded-xl">
+                        <span className="block text-xs font-black text-orange-400">{playerStats.pending}</span>
+                        <span className="text-[8px] font-bold text-gray-500 uppercase">Čeka</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-gray-500 pl-1">Kvota para</span>
-                    <input type="number" placeholder="1.85" value={form.odds} onChange={e => setForm({ ...form, odds: e.target.value })}
-                      className="w-full h-[46px] bg-black/50 border border-white/10 rounded-xl px-3 text-xs outline-none focus:border-yellow-400/50 text-center font-bold text-white transition-colors" />
-                  </div>
+
+                  {isOwner && (
+                    <div className="p-6 rounded-3xl bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-yellow-400/20 shadow-xl flex flex-col gap-3.5">
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-400/70 flex items-center gap-2">⚽ UNESI NOVI PAR</h3>
+                      <div className="flex flex-col gap-1.5">
+                        <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full h-[46px] bg-black/50 border border-white/10 rounded-xl px-3 text-xs text-white" />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <input placeholder="Naziv meča" value={form.matchName} onChange={e => setForm({ ...form, matchName: e.target.value })} className="w-full h-[46px] bg-black/50 border border-white/10 rounded-xl px-4 text-xs text-white" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <input placeholder="Tip (Npr. GG)" value={form.tip} onChange={e => setForm({ ...form, tip: e.target.value })} className="w-full h-[46px] bg-black/50 border border-white/10 rounded-xl px-3 text-xs text-center text-white" />
+                        <input type="number" placeholder="Kvota" value={form.odds} onChange={e => setForm({ ...form, odds: e.target.value })} className="w-full h-[46px] bg-black/50 border border-white/10 rounded-xl px-3 text-xs text-center font-bold text-white" />
+                      </div>
+                      <button onClick={handleAdd} disabled={isSubmitting} className="w-full h-[48px] font-black text-xs uppercase tracking-widest rounded-xl text-black" style={{ background: 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)' }}>
+                        {isSubmitting ? "Slanje..." : "DODAJ PAR"}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                <button
-                  onClick={handleAdd} disabled={isSubmitting}
-                  className={`w-full h-[48px] mt-2 font-black text-xs uppercase tracking-widest rounded-xl transition-all active:scale-95 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  style={{ background: 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)', color: '#000', boxShadow: '0 4px 15px rgba(234,179,8,0.15)' }}
-                >
-                  {isSubmitting ? "Slanje..." : "DODAJ PAR"}
-                </button>
-              </div>
-            )}
-          </div>
+                <div className="space-y-4">
+                  {allBets[activePlayer] && allBets[activePlayer].length === 0 ? (
+                    <div className="p-12 text-center text-xs font-black uppercase tracking-widest text-gray-600 bg-white/5 border border-white/5 rounded-3xl">Nema parova.</div>
+                  ) : (
+                    [...allBets[activePlayer]].reverse().map((row, rowIdx) => {
+                      const isToday = row.date === today;
+                      const isFuture = row.date > today;
+                      
+                      // 👇 UPDATED SECURE CONTROLLER ROW RULES: Validates eligibility day-by-day dynamically
+                      const isRowHidden = !isOwner && !hasUserUnlockedDate(row.date);
 
-          {/* COLUMN 2: FEED GRID (The dynamic betting tickets waterfall) */}
-          <div className="space-y-4 lg:max-h-[calc(100vh-140px)] overflow-y-auto no-scrollbar pr-1">
-            {allBets[activePlayer] && allBets[activePlayer].length === 0 ? (
-              <div className="p-12 text-center text-xs font-black uppercase tracking-widest text-gray-600 bg-white/5 border border-white/5 rounded-3xl">
-                Ovaj profil trenutno nema unetih parova.
+                      return (
+                        <div key={row.date} className="rounded-2xl p-5 flex flex-col sm:flex-row gap-4 items-stretch bg-gradient-to-r from-white/[0.04] to-white/[0.01] border" style={{ borderColor: isToday ? 'rgba(250,204,21,0.25)' : 'rgba(255,255,255,0.06)', animation: mounted ? `stagger-in 0.3s ease-out ${Math.min(rowIdx * 0.04, 0.4)}s both` : 'none' }}>
+                          <div className="flex sm:flex-col justify-between sm:justify-center items-center gap-1 sm:border-r border-white/5 sm:pr-5 shrink-0 min-w-[70px]">
+                            <div className="text-center">
+                              <span className="block text-[8px] font-bold text-gray-500 uppercase">TICKET</span>
+                              <span className="text-base font-black text-gray-300">{row.date.split('-').reverse().slice(0, 2).join('.')}</span>
+                            </div>
+                            {isToday && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-yellow-400/10 text-yellow-400 rounded border border-yellow-400/20">Danas</span>}
+                            {isFuture && <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-purple-500/10 text-purple-400 rounded border border-purple-500/20">Uskoro</span>}
+                          </div>
+                          
+                          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {isRowHidden ? (
+                              <div className="col-span-1 md:col-span-2 flex items-center justify-center p-6 bg-black/40 border border-white/5 rounded-xl border-dashed">
+                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.25em] flex items-center gap-2">
+                                  🔒 Zaključano dok ne popuniš svoj tiket za ovaj datum
+                                </span>
+                              </div>
+                            ) : (
+                              [row.match1, row.match2].map((m, idx) => {
+                                const mKey = idx === 0 ? "match1" : "match2";
+                                const cKey = `${row.date}-${activePlayer}-${mKey}`;
+                                return (
+                                  <div key={idx} onClick={() => isOwner && m.status !== 'empty' && handleToggle(row.date, activePlayer, mKey)} className={`p-4 rounded-xl border flex flex-col justify-between min-h-[92px] ${getStatusColor(m.status)} ${isOwner && m.status !== 'empty' ? 'cursor-pointer hover:bg-white/[0.02]' : ''} ${m.status === 'pending' ? 'pending-glow' : ''} ${springMap[cKey] ? 'spring-anim' : ''}`}>
+                                    {flashMap[cKey] && <div className="absolute inset-0 pointer-events-none z-20" style={{ background: flashMap[cKey] === 'win' ? '#22c55e' : '#ef4444', animation: 'flash-overlay 0.5s ease-out both' }} />}
+                                    <div className="flex justify-between items-start gap-2 mb-1">
+                                      <span className="text-[8px] font-black text-white/40 uppercase">{m.sport || "⚽"} PAR {idx + 1}</span>
+                                      {m.status !== 'empty' && <span className={`font-black text-xs px-2 py-0.5 border rounded-md ${getOddsRiskStyle(m.odds)}`}>{m.odds.toFixed(2)}</span>}
+                                    </div>
+                                    <div className="my-1.5 text-xs font-black truncate uppercase text-white">{m.name || "---"}</div>
+                                    <div className="text-[9px] font-black uppercase text-white/40">TIP: <span className="text-white">{m.tip || "---"}</span></div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             ) : (
-              [...allBets[activePlayer]].reverse().map((row, rowIdx) => {
-                const isToday = row.date === today;
-                return (
-                  <div
-                    key={row.date}
-                    className="rounded-2xl p-5 flex flex-col sm:flex-row gap-4 items-stretch bg-gradient-to-r from-white/[0.04] to-white/[0.01] border transition-all"
-                    style={{
-                      borderColor: isToday ? 'rgba(250,204,21,0.25)' : 'rgba(255,255,255,0.06)',
-                      boxShadow: isToday ? '0 0 15px rgba(250,204,21,0.04)' : 'none',
-                      animation: mounted ? `stagger-in 0.4s cubic-bezier(0.22,1,0.36,1) ${Math.min(rowIdx * 0.05, 0.45)}s both` : 'none',
-                      opacity: mounted ? undefined : 0,
-                    }}
-                  >
-                    {/* TICKET LEFT BLOCK: META INFO */}
-                    <div className="flex sm:flex-col justify-between sm:justify-center items-center gap-1 sm:border-r border-white/5 sm:pr-5 shrink-0 min-w-[70px]">
-                      <div className="text-center">
-                        <span className="block text-[8px] font-bold text-gray-500 uppercase tracking-wider">TICKET</span>
-                        <span className={`text-base font-black tracking-tighter ${isToday ? 'text-yellow-400' : 'text-gray-300'}`}>
-                          {row.date.split('-').reverse().slice(0, 2).join('.')}
-                        </span>
-                      </div>
-                      {isToday && (
-                        <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-yellow-400/10 border border-yellow-400/20 rounded text-yellow-400">
-                          Danas
-                        </span>
-                      )}
+              
+              /* ─────────────── TAB 2: GROUPED LIVE MATCHDAY FEED ─────────────── */
+              <div key="matchday" className="max-w-3xl mx-auto space-y-6 animate-[stagger-in_0.3s_ease-out]">
+                <div className="space-y-6">
+                  {/* 👇 FIXED AGGREGATOR LOCKOUT LAYER: Evaluates your locks exclusively for the CURRENT calendar day */}
+                  {!hasUserUnlockedDate(today) ? (
+                    <div className="p-12 text-center rounded-3xl bg-black/40 border border-white/5 flex flex-col items-center justify-center py-16 gap-3 border-dashed">
+                      <span className="text-3xl">🔒</span>
+                      <h3 className="text-sm font-black text-gray-300 uppercase tracking-wider">Pregled je zaključan!</h3>
+                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-relaxed max-w-sm mx-auto">
+                        Moraš uneti **oba svoja para** za danas pre nego što dobiješ dozvolu da vidiš šta igra ostatak grupe.
+                      </p>
                     </div>
-
-                    {/* TICKET RIGHT BLOCK: DOUBLE MATCH STACKS */}
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {[row.match1, row.match2].map((m, idx) => {
-                        const matchKey = idx === 0 ? ("match1" as const) : ("match2" as const);
-                        const cardKey = `${row.date}-${matchKey}`;
-                        const isSpring = springMap[cardKey];
-                        const flash = flashMap[cardKey];
-                        const isPending = m.status === 'pending';
-
-                        return (
-                          <div
-                            key={idx}
-                            onClick={() => isOwner && m.status !== 'empty' && handleToggle(row.date, matchKey)}
-                            className={[
-                              'p-4 rounded-xl border transition-all relative overflow-hidden flex flex-col justify-between min-h-[92px]',
-                              getStatusColor(m.status),
-                              m.status === 'empty' ? 'opacity-20 grayscale select-none' : '',
-                              isOwner && m.status !== 'empty' ? 'cursor-pointer hover:bg-white/[0.03]' : 'cursor-default',
-                              isPending ? 'pending-glow' : '',
-                              isSpring ? 'spring-anim' : '',
-                            ].join(' ')}
-                          >
-                            {flash && (
-                              <div className="absolute inset-0 rounded-xl pointer-events-none z-20"
-                                style={{ background: flash === 'win' ? '#22c55e' : '#ef4444', animation: 'flash-overlay 0.52s ease-out both' }} />
-                            )}
-                            
-                            <div className="flex justify-between items-start gap-2 mb-1 relative z-10">
-                              <span className="text-[8px] font-black bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white/50 tracking-wider uppercase">
-                                {m.sport || "⚽"} PAR {idx + 1}
+                  ) : Object.keys(groupedMatchdayPicks.groups).length === 0 ? (
+                    <div className="p-16 text-center text-xs font-black uppercase tracking-widest text-gray-600 bg-white/5 border border-white/5 rounded-3xl">
+                      Niko još nije uneo parove za danas.
+                    </div>
+                  ) : (
+                    Object.entries(groupedMatchdayPicks.groups).map(([player, picks]) => {
+                      const userTheme = PLAYER_THEMES[player];
+                      return (
+                        <div key={player} className="p-5 rounded-2xl bg-black/40 border border-white/5 backdrop-blur-sm space-y-4">
+                          <div className="flex items-center gap-3 border-b border-white/5 pb-3">
+                            <div className="w-10 h-10 rounded-full border border-white/20 overflow-hidden shrink-0 shadow-sm">
+                              <img src={userTheme.icon} className="w-full h-full object-cover" alt={player} />
+                            </div>
+                            <div>
+                              <h3 className={`text-sm font-black uppercase tracking-wider ${userTheme.text}`}>{player}</h3>
+                              <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest block mt-0.5">
+                                Današnjih parova: {picks.length}
                               </span>
-                              {m.status !== 'empty' && (
-                                <span className="font-black text-sm tracking-tight text-white">{m.odds.toFixed(2)}</span>
-                              )}
-                            </div>
-
-                            <div className="my-1.5">
-                              <div className="text-xs font-black truncate uppercase text-white tracking-wide">{m.name || "---"}</div>
-                            </div>
-
-                            <div className="text-[9px] font-black uppercase text-white/40 tracking-widest relative z-10">
-                              TIP: <span className="text-white font-bold">{m.tip || "---"}</span>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {picks.map((item, idx) => {
+                              return (
+                                <div 
+                                  key={idx}
+                                  className={`p-4 rounded-xl border bg-black/40 relative overflow-hidden flex flex-col justify-between min-h-[92px] transition-all cursor-default ${getStatusColor(item.match.status)} ${item.match.status === 'pending' ? 'pending-glow' : ''}`}
+                                >
+                                  <div className="flex justify-between items-start gap-2 mb-1">
+                                    <span className="text-[8px] font-black text-white/40 uppercase">
+                                      {item.match.sport || "⚽"} PAR {item.matchKey === 'match1' ? '1' : '2'}
+                                    </span>
+                                    <span className={`font-black text-xs px-2 py-0.5 border rounded-md tracking-tight block ${getOddsRiskStyle(item.match.odds)}`}>
+                                      {item.match.odds.toFixed(2)}
+                                    </span>
+                                  </div>
+
+                                  <div className="my-1 text-xs font-black uppercase truncate text-white tracking-wide">
+                                    {item.match.name}
+                                  </div>
+
+                                  <div className="text-[9px] font-black uppercase tracking-widest text-white/40">
+                                    TIP: <span className="text-white font-bold">{item.match.tip}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
             )}
-          </div>
+          </AnimatePresence>
         </div>
 
         {/* FOOTER TICKER */}
