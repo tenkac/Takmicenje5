@@ -150,8 +150,11 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
             <div className="w-16" />
           </div>
 
-         {/* HORIZONTAL CAROUSEL SELECTOR: Optimized for native momentum scrolling */}
-          <div className="max-w-7xl w-full mx-auto flex gap-2.5 overflow-x-auto no-scrollbar py-2 px-4 -mx-4 scroll-smooth overscroll-contain touch-pan-x snap-x">
+          {/* 👇 LARGER CAROUSEL SELECTOR: Expanded for flawless touch mechanics on mobile */}
+          <div 
+            className="max-w-7xl w-full mx-auto flex gap-3 overflow-x-auto no-scrollbar py-2.5 px-4 -mx-4 scroll-smooth overscroll-contain touch-pan-x snap-x"
+            onTouchMove={(e) => e.stopPropagation()} 
+          >
             {PLAYERS.map(p => {
               const isActive = activePlayer === p;
               const theme = PLAYER_THEMES[p];
@@ -159,18 +162,18 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                 <button
                   key={p}
                   onClick={() => setActivePlayer(p)}
-                  className={`flex items-center gap-2.5 px-4 py-2 rounded-full border transition-all duration-300 relative shrink-0 snap-inline ${
+                  className={`flex items-center gap-3 px-5 py-3 rounded-full border transition-all duration-300 relative shrink-0 snap-inline ${
                     isActive 
-                      ? `${theme.border} bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)] scale-100` 
+                      ? `${theme.border} bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] scale-100` 
                       : 'border-white/5 bg-black/40 opacity-50 hover:opacity-100 active:scale-95'
                   }`}
                 >
-                  <div className="w-6 h-6 rounded-full overflow-hidden border border-white/20 relative pointer-events-none">
+                  <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20 relative pointer-events-none">
                     <img src={theme.icon} className="w-full h-full object-cover" alt={p} />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest pointer-events-none">{p}</span>
+                  <span className="text-xs font-black uppercase tracking-widest pointer-events-none">{p}</span>
                   {isActive && (
-                    <span className="w-1.5 h-1.5 rounded-full absolute -top-0.5 -right-0.5 animate-pulse" style={{ backgroundColor: theme.hex }} />
+                    <span className="w-2 h-2 rounded-full absolute -top-0.5 -right-0.5 animate-pulse" style={{ backgroundColor: theme.hex }} />
                   )}
                 </button>
               );
@@ -182,7 +185,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
         <div className="max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 relative z-10">
           
           {/* COLUMN 1: SIDE PANEL (Sticky Control Tower) */}
-          <div className="flex flex-col gap-6 lg:sticky lg:top-[120px] lg:h-[calc(100vh-160px)]">
+          <div className="flex flex-col gap-6 lg:sticky lg:top-[140px] lg:h-[calc(100vh-180px)]">
             
             {/* ACTIVE PLAYER HERO DISPLAY CARD */}
             <div className="p-6 rounded-3xl bg-white/5 border border-white/5 relative overflow-hidden backdrop-blur-md">
@@ -213,7 +216,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
             </div>
 
             {/* ACTION PANEL (Form Box) */}
-            {isOwner ? (
+            {isOwner && (
               <div className="p-6 rounded-3xl bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-yellow-400/20 shadow-xl flex flex-col gap-3.5">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-400/70 flex items-center gap-2">⚽ UNESI NOVI PAR</h3>
                 
@@ -249,13 +252,6 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                 >
                   {isSubmitting ? "Slanje..." : "DODAJ PAR"}
                 </button>
-              </div>
-            ) : (
-              <div className="p-6 text-center rounded-3xl bg-black/20 border border-white/5 flex flex-col items-center justify-center py-8 gap-2">
-                <span className="text-2xl">🔒</span>
-                <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest leading-relaxed">
-                  Pregled je zaključan.<br />Loguj se kao <span className="text-white">{activePlayer}</span> za izmene.
-                </p>
               </div>
             )}
           </div>
