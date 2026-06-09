@@ -508,11 +508,6 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
               
               /* ─────────────── TAB 2: GROUPED LIVE MATCHDAY FEED ─────────────── */
               <div key="matchday" className="max-w-3xl mx-auto space-y-6 animate-[stagger-in_0.3s_ease-out]">
-                <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 text-center backdrop-blur-md">
-                  <h2 className="text-base font-black text-yellow-400 uppercase tracking-widest">DANAŠNJI OKRŠAJI ⚔️</h2>
-                  <p className="text-[9px] font-bold text-gray-500 uppercase tracking-[0.18em] mt-0.5">Hronološki pregled po igračima za datum: {today.split('-').reverse().join('.')}</p>
-                </div>
-
                 <div className="space-y-6">
                   {!hasUserUnlockedDate(today) ? (
                     <div className="p-12 text-center rounded-3xl bg-black/40 border border-white/5 flex flex-col items-center justify-center py-16 gap-3 border-dashed">
