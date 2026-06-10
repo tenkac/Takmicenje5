@@ -119,9 +119,11 @@ export default function WCPredictor({ activePlayer }: Props) {
         .from('wc_predictions')
         .select('predictions')
         .eq('player', activePlayer)
-        .single();
+        .maybeSingle();
 
-      if (data && data.predictions) {
+      if (!data || !data.predictions) {
+         setGroups(INITIAL_GROUPS); // Fallback ako nema podataka
+      } else {
         setGroups(data.predictions.groups || INITIAL_GROUPS);
         setSemis(data.predictions.semis || ["", "", "", ""]);
         setWinner(data.predictions.winner || "");

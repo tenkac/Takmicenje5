@@ -209,6 +209,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
 
   const playerStats = React.useMemo(() => {
     const rows = allBets[activePlayer] || [];
+    if (!rows || !Array.isArray(rows)) return { wins: 0, pending: 0, score: "0.00" };
     let wins = 0, pending = 0, totalOdds = 0;
     rows.flatMap(r => [r.match1, r.match2]).forEach(m => {
       if (m.status === 'win') { wins++; totalOdds += m.odds; }
@@ -402,8 +403,11 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                 </div>
 
                 <div className="space-y-4">
-                  {allBets[activePlayer] && allBets[activePlayer].length === 0 ? (
-                    <div className="p-12 text-center text-xs font-black uppercase tracking-widest text-gray-600 bg-white/5 border border-white/5 rounded-3xl">Nema parova.</div>
+                  {/* 👇 Sigurnosna provjera ovdje */}
+                  {(!allBets[activePlayer] || allBets[activePlayer].length === 0) ? (
+                    <div className="p-12 text-center text-xs font-black uppercase tracking-widest text-gray-600 bg-white/5 border border-white/5 rounded-3xl">
+                      {activePlayer} trenutno nema unesenih parova.
+                    </div>
                   ) : (
                     [...allBets[activePlayer]].reverse().map((row, rowIdx) => {
                       const isToday = row.date === today;

@@ -120,10 +120,19 @@ export default function BettingApp() {
   };
 
   const getLoggedInPlayerName = () => {
-    if (!session?.user?.email) return "Vlado";
-    const name = session.user.email.split('@')[0];
-    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
-  };
+  if (!session?.user?.email) return "Vlado";
+  
+  // Pretvaramo email u osnovni string (npr "vladoadmin" ili "fika")
+  const emailPrefix = session.user.email.split('@')[0].toLowerCase();
+  
+  // 👇 LOGIKA: Ako je vladoadmin, vrati "Vlado"
+  if (emailPrefix === "vladoadmin") {
+    return "Vlado";
+  }
+  
+  // Inače, formatiraj ime kao i do sada
+  return emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1).toLowerCase();
+};
 
   const handleMyPicksTabClick = () => {
     const myName = getLoggedInPlayerName();
