@@ -1,8 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AllPlayersData, PLAYERS } from '../types';
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 
 interface Props {
@@ -18,80 +17,194 @@ const PLAYER_THEMES: Record<string, { text: string; border: string; icon: string
   "Dzoni":  { text: "text-yellow-500", border: "border-yellow-500/30", icon: "/Avatars/dzoni.jpg",  gradient: "from-yellow-600 to-yellow-400",hex: "#eab308" },
 };
 
-const tooltipStyle = {
-  contentStyle: { background: '#060c1a', border: '1px solid rgba(250,204,21,0.15)', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' },
-  labelStyle: { color: '#888', textTransform: 'uppercase' as const, letterSpacing: '0.1em' },
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const sortedPayload = [...payload].sort((a, b) => b.value - a.value);
+
+    return (
+      <div className="p-2.5 rounded-2xl bg-[#05091a]/95 border border-white/10 shadow-2xl backdrop-blur-xl w-44 z-[100]">
+        <p className="text-yellow-400 font-black text-[10px] uppercase tracking-[0.2em] mb-1.5 border-b border-white/10 pb-1">
+          Date: {label}
+        </p>
+        <div className="space-y-2.5">
+          {sortedPayload.map((entry: any) => {
+            const player = entry.dataKey;
+            const color = entry.color;
+            const dailyData = entry.payload[`${player}_daily`];
+
+            return (
+              <div key={player} className="flex flex-col gap-0.5">
+                <div className="flex justify-between items-end">
+                  <span className="font-black text-[10px] uppercase tracking-wider" style={{ color }}>{player}</span>
+                  <div className="flex items-center gap-1">
+                    {dailyData.added > 0 && (
+                      <span className="text-[8px] font-black text-green-400">+{dailyData.added}</span>
+                    )}
+                    <span className="font-black text-[10px] text-white bg-white/5 px-1 rounded">{entry.value.toFixed(2)}</span>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col mt-0.5 border-l-[1.5px] pl-1.5" style={{ borderColor: `${color}40` }}>
+                  {dailyData.details.map((detail: string, i: number) => (
+                    <span key={i} className="text-[7.5px] leading-tight text-gray-400 font-bold truncate uppercase tracking-wide">
+                      {detail}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+  return null;
 };
 
 export default function Statistics({ allBets, onBack }: Props) {
-  const [activeRadarPlayer, setActiveRadarPlayer] = useState("Vlado");
   const [mounted, setMounted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   useEffect(() => { setMounted(true); }, []);
 
-  const playerStats = useMemo(() => PLAYERS.map(player => {
-    const rows = allBets[player] || [];
-    let totalResolved = 0, wins = 0, totalPlayedOdds = 0, totalPlayedCount = 0, totalWonOdds = 0;
-    let currentStreak = 0;
-    let streakType: 'win' | 'loss' | null = null;
-
-    const allMatches = rows.flatMap(r => [r.match1, r.match2]).filter(m => m.status !== 'empty');
-    allMatches.forEach(m => {
-      totalPlayedOdds += m.odds;
-      totalPlayedCount++;
-      if (m.status === 'win' || m.status === 'loss') {
-        totalResolved++;
-        if (m.status === 'win') { wins++; totalWonOdds += m.odds; }
-      }
-    });
-
-    const resolved = allMatches.filter(m => m.status === 'win' || m.status === 'loss').reverse();
-    for (const m of resolved) {
-      if (streakType === null) { streakType = m.status as 'win' | 'loss'; currentStreak = 1; }
-      else if (m.status === streakType) currentStreak++;
-      else break;
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
     }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isFullscreen]);
 
-    return {
-      player,
-      hitRate:         totalResolved > 0    ? parseFloat(((wins / totalResolved) * 100).toFixed(1)) : 0,
-      avgPlayed:       totalPlayedCount > 0 ? parseFloat((totalPlayedOdds / totalPlayedCount).toFixed(2)) : 0,
-      avgWon:          wins > 0             ? parseFloat((totalWonOdds / wins).toFixed(2)) : 0,
-      wins, totalResolved,
-      totalScore:      parseFloat(totalWonOdds.toFixed(2)),
-      currentStreak, streakType, totalPlayedCount,
-    };
-  }).sort((a, b) => b.hitRate - a.hitRate), [allBets]);
+  // ── STATS & ALL-TIME HISTORICAL STREAKS CALCULATION ──
+  const playerStats = useMemo(() => {
+    const stats = PLAYERS.map(player => {
+      const rows = allBets[player] || [];
+      let totalResolved = 0, wins = 0, totalPlayedOdds = 0, totalPlayedCount = 0, totalWonOdds = 0;
+      let perfectDays = 0;
+      
+      let maxWinStreak = 0;
+      let maxLossStreak = 0;
+      let currentWinCount = 0;
+      let currentLossCount = 0;
 
+      rows.forEach(row => {
+        if (row.match1 && row.match2 && row.match1.status === 'win' && row.match2.status === 'win') {
+          perfectDays++;
+        }
+      });
+
+      const allMatches = rows.flatMap(r => [r.match1, r.match2]).filter(m => m.status !== 'empty');
+      
+      allMatches.forEach(m => {
+        totalPlayedOdds += m.odds;
+        totalPlayedCount++;
+        if (m.status === 'win' || m.status === 'loss') {
+          totalResolved++;
+          if (m.status === 'win') { 
+            wins++; 
+            totalWonOdds += m.odds; 
+          }
+        }
+      });
+
+      const chronologicalMatches = allMatches.filter(m => m.status === 'win' || m.status === 'loss');
+      
+      chronologicalMatches.forEach(m => {
+        if (m.status === 'win') {
+          currentWinCount++;
+          currentLossCount = 0;
+          if (currentWinCount > maxWinStreak) maxWinStreak = currentWinCount;
+        } else if (m.status === 'loss') {
+          currentLossCount++;
+          currentWinCount = 0;
+          if (currentLossCount > maxLossStreak) maxLossStreak = currentLossCount;
+        }
+      });
+
+      let activeCount = 0;
+      let activeType: 'win' | 'loss' | null = null;
+      const reversedMatches = [...chronologicalMatches].reverse();
+      for (const m of reversedMatches) {
+        if (activeType === null) { activeType = m.status as 'win' | 'loss'; activeCount = 1; }
+        else if (m.status === activeType) activeCount++;
+        else break;
+      }
+
+      return {
+        player,
+        hitRate:         totalResolved > 0    ? parseFloat(((wins / totalResolved) * 100).toFixed(1)) : 0,
+        avgPlayed:       totalPlayedCount > 0 ? parseFloat((totalPlayedOdds / totalPlayedCount).toFixed(2)) : 0,
+        avgWon:          wins > 0             ? parseFloat((totalWonOdds / wins).toFixed(2)) : 0,
+        wins, totalResolved,
+        totalScore:      parseFloat(totalWonOdds.toFixed(2)),
+        maxWinStreak, maxLossStreak, activeCount, activeType,
+        perfectDays
+      };
+    }).sort((a, b) => b.hitRate - a.hitRate);
+
+    const historicalWinStreaks = stats.map(s => s.maxWinStreak);
+    const allTimeHighWin = historicalWinStreaks.length > 0 ? Math.max(...historicalWinStreaks) : -1;
+
+    const historicalLossStreaks = stats.map(s => s.maxLossStreak);
+    const allTimeHighLoss = historicalLossStreaks.length > 0 ? Math.max(...historicalLossStreaks) : -1;
+
+    const avgWonArr = stats.map(s => s.avgWon).filter(v => v > 0);
+    const maxAvgWon = avgWonArr.length > 0 ? Math.max(...avgWonArr) : -1;
+
+    const perfectDaysArr = stats.map(s => s.perfectDays);
+    const maxPerfectDays = perfectDaysArr.length > 0 ? Math.max(...perfectDaysArr) : -1;
+
+    return stats.map(s => ({
+      ...s,
+      isKamikaze: s.avgWon === maxAvgWon && maxAvgWon > 0,
+      isRetard: s.maxWinStreak === allTimeHighWin && allTimeHighWin > 1,
+      isJadnik: s.maxLossStreak === allTimeHighLoss && allTimeHighLoss > 1,
+      isBoomMaster: s.perfectDays === maxPerfectDays && maxPerfectDays > 0
+    }));
+  }, [allBets]);
+
+  const retardi = playerStats.filter(s => s.isRetard);
+  const jadnici = playerStats.filter(s => s.isJadnik);
+  const boomMasters = playerStats.filter(s => s.isBoomMaster);
+
+  // ── TIMELINE DATA ──
   const timelineData = useMemo(() => {
     const allDates = [...new Set(PLAYERS.flatMap(p => (allBets[p] || []).map(r => r.date)))].sort();
     const running: Record<string, number> = {};
     PLAYERS.forEach(p => running[p] = 0);
+    
     return allDates.map(date => {
-      const point: any = { date: date.slice(5) };
+      const point: any = { date: date.slice(5) }; 
+      
       PLAYERS.forEach(player => {
         const row = allBets[player]?.find(r => r.date === date);
-        if (row) [row.match1, row.match2].forEach(m => {
-          if (m.status === 'win') running[player] = parseFloat((running[player] + m.odds).toFixed(2));
-        });
-        point[player] = running[player];
+        let dailyWins = 0;
+        let dailyDetails: string[] = [];
+
+        if (row) {
+          [row.match1, row.match2].forEach(m => {
+            if (m.status === 'win') {
+              running[player] += m.odds;
+              dailyWins += m.odds;
+              dailyDetails.push(`✅ ${m.name} (${m.odds.toFixed(2)})`);
+            } else if (m.status === 'loss') {
+              dailyDetails.push(`❌ ${m.name}`);
+            } else if (m.status === 'pending') {
+              dailyDetails.push(`⏳ ${m.name} (Wait)`);
+            }
+          });
+        }
+
+        point[player] = parseFloat(running[player].toFixed(2));
+        point[`${player}_daily`] = {
+          added: parseFloat(dailyWins.toFixed(2)),
+          details: dailyDetails.length > 0 ? dailyDetails : ['No picks logged']
+        };
       });
       return point;
     });
   }, [allBets]);
-
-  const buildRadarData = useCallback((player: string) => {
-    const s = playerStats.find(x => x.player === player);
-    if (!s) return [];
-    const maxScore  = Math.max(...playerStats.map(x => x.totalScore), 1);
-    const maxAvgOdd = Math.max(...playerStats.map(x => x.avgPlayed), 1);
-    const maxWins   = Math.max(...playerStats.map(x => x.wins), 1);
-    return [
-      { metric: 'Hit Rate',    value: s.hitRate },
-      { metric: 'Total Score', value: parseFloat(((s.totalScore / maxScore)  * 100).toFixed(1)) },
-      { metric: 'Avg Odds',    value: parseFloat(((s.avgPlayed / maxAvgOdd)  * 100).toFixed(1)) },
-      { metric: 'Wins',        value: parseFloat(((s.wins / maxWins)          * 100).toFixed(1)) },
-    ];
-  }, [playerStats]);
 
   const smallestOdds = useMemo(() => {
     const all: any[] = [];
@@ -106,83 +219,119 @@ export default function Statistics({ allBets, onBack }: Props) {
   }, [allBets]);
 
   const streakLabel = (s: typeof playerStats[0]) => {
-    if (!s.streakType || s.currentStreak === 0) return <span className="text-gray-600 text-xs font-bold">–</span>;
-    const isWin = s.streakType === 'win';
-    return <span className={`text-xs font-black ${isWin ? 'text-green-400' : 'text-red-400'}`}>{isWin ? '🔥' : '❄️'} {s.currentStreak}{isWin ? 'W' : 'L'}</span>;
+    if (!s.activeType || s.activeCount === 0) return <span className="text-gray-600 text-[10px] font-bold">–</span>;
+    const isWin = s.activeType === 'win';
+    return <span className={`text-[10px] font-black ${isWin ? 'text-green-400' : 'text-red-400'}`}>{isWin ? '🔥' : '❄️'} {s.activeCount}{isWin ? 'W' : 'L'}</span>;
   };
 
-  const cardStyle = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' };
+  const cardStyle = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' };
+
+  const renderRaceChart = (chartHeight: number) => (
+    <ResponsiveContainer width="100%" height={chartHeight}>
+      <AreaChart data={timelineData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+        <defs>
+          {PLAYERS.map(p => (
+            <linearGradient key={p} id={`color_${p}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={PLAYER_THEMES[p].hex} stopOpacity={0.4} />
+              <stop offset="95%" stopColor={PLAYER_THEMES[p].hex} stopOpacity={0} />
+            </linearGradient>
+          ))}
+        </defs>
+        <XAxis dataKey="date" stroke="#333" tick={{ fontSize: 9, fill: '#666', fontWeight: 'bold' }} tickLine={false} axisLine={false} />
+        <YAxis stroke="#333" tick={{ fontSize: 9, fill: '#666', fontWeight: 'bold' }} tickLine={false} axisLine={false} />
+        <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1.5, strokeDasharray: '4 4' }} />
+        <Legend wrapperStyle={{ fontSize: '9px', fontWeight: 'black', textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: '10px' }} iconType="circle" />
+        
+        {PLAYERS.map(p => (
+          <Area 
+            key={p} 
+            type="monotone" 
+            dataKey={p} 
+            stroke={PLAYER_THEMES[p].hex} 
+            strokeWidth={2.5} 
+            fill={`url(#color_${p})`}
+            activeDot={{ r: 5, strokeWidth: 2, stroke: '#05091a', fill: PLAYER_THEMES[p].hex }} 
+          />
+        ))}
+      </AreaChart>
+    </ResponsiveContainer>
+  );
 
   return (
     <div
-      className="min-h-screen p-4 md:p-8 font-sans text-white relative overflow-hidden"
+      className="min-h-screen p-3 md:p-6 font-sans text-white relative overflow-x-hidden overflow-y-auto pb-6"
       style={{ background: 'linear-gradient(165deg, #05091a 0%, #080d20 45%, #040810 100%)' }}
     >
-      {/* WC background layers */}
       <div className="fixed inset-0 wc-jersey-bg pointer-events-none" />
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="wc-beam-l absolute" style={{ top: 0, left: '16%', width: '220px', height: '60vh', background: 'linear-gradient(178deg, rgba(250,204,21,0.12) 0%, transparent 80%)', transformOrigin: 'top center', filter: 'blur(44px)' }} />
-        <div className="wc-beam-r absolute" style={{ top: 0, right: '16%', width: '220px', height: '60vh', background: 'linear-gradient(178deg, rgba(250,204,21,0.12) 0%, transparent 80%)', transformOrigin: 'top center', filter: 'blur(44px)' }} />
-        <div style={{ position: 'absolute', top: '-70px', left: '50%', transform: 'translateX(-50%)', width: '600px', height: '400px', background: 'radial-gradient(ellipse at top, rgba(250,204,21,0.06) 0%, transparent 65%)' }} />
-      </div>
-      <div className="fixed inset-0 pointer-events-none select-none overflow-hidden">
-        <span className="wc-float      absolute text-5xl" style={{ opacity: 0.04, top: '20%',    left: '2%'  }}>⚽</span>
-        <span className="wc-float-slow absolute text-7xl" style={{ opacity: 0.03, bottom: '18%', right: '1%' }}>⚽</span>
+        <div className="wc-beam-l absolute" style={{ top: 0, left: '10%', width: '150px', height: '60vh', background: 'linear-gradient(178deg, rgba(250,204,21,0.12) 0%, transparent 80%)', filter: 'blur(35px)' }} />
+        <div className="wc-beam-r absolute" style={{ top: 0, right: '10%', width: '150px', height: '60vh', background: 'linear-gradient(178deg, rgba(250,204,21,0.12) 0%, transparent 80%)', filter: 'blur(35px)' }} />
       </div>
 
       {/* HEADER */}
-      <div className="relative z-10 flex justify-between items-center mb-8 max-w-5xl mx-auto">
-        <button onClick={onBack} className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl border border-white/10 transition-all text-xs font-bold uppercase tracking-widest">
-          ← Nazad
+      <div className="relative z-10 flex justify-between items-center mb-5 max-w-6xl mx-auto pt-2">
+        <button onClick={onBack} className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl border border-white/10 transition-all text-[10px] font-bold uppercase tracking-widest active:scale-95">
+          ← Back
         </button>
-        <div className="text-center">
-          <h2 className="text-sm font-bold text-yellow-400 uppercase tracking-widest">⚽ World Cup 2026</h2>
-          <h1 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter">Statistika</h1>
+        <div className="text-center shrink-0">
+          <h2 className="text-[9px] font-black text-yellow-400 uppercase tracking-widest">⚽ World Cup</h2>
+          <h1 className="text-xl font-black italic uppercase tracking-tighter">Stats</h1>
         </div>
-        <div className="w-[88px]" />
+        <div className="w-[60px]" />
       </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto space-y-8">
+      <div className="relative z-10 max-w-6xl mx-auto space-y-4">
 
-        {/* PLAYER STAT CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* ── 1. COMPACT PLAYER CARDS ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {playerStats.map((stat, idx) => {
             const p = PLAYER_THEMES[stat.player];
             return (
-              <div key={stat.player} className="p-6 rounded-3xl backdrop-blur-md relative overflow-hidden hover:scale-[1.02] transition-all shadow-xl"
-                style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${p.hex}30` }}>
-                {idx === 0 && <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${p.gradient}`} />}
-                {idx === 0 && <div className="absolute top-0 right-0 text-5xl p-3 opacity-10 select-none">🏆</div>}
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-full border-2 border-white/20 overflow-hidden bg-gray-900 shadow-lg">
-                    <img src={p.icon} alt={stat.player} className="w-full h-full object-cover" />
+              <div key={stat.player} className="p-4 rounded-3xl backdrop-blur-md relative overflow-hidden shadow-lg flex flex-col"
+                style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${p.hex}30` }}>
+                
+                {idx === 0 && <div className={`absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r ${p.gradient}`} />}
+                
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full border-2 border-white/20 overflow-hidden bg-gray-900 shadow-md shrink-0">
+                      <img src={p.icon} alt={stat.player} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <h2 className={`text-lg font-black uppercase tracking-widest ${p.text} leading-none mb-1`}>{stat.player}</h2>
+                      <div className="flex flex-wrap gap-1 items-center">
+                        <span className="text-[8px] font-black text-white/60 uppercase tracking-widest bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+                          #{idx + 1}
+                        </span>
+                        {stat.isKamikaze && (
+                          <span className="text-[8px] font-black text-amber-400 uppercase tracking-widest bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                            💥 Kamikaza
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h2 className={`text-xl font-black uppercase tracking-widest ${p.text} leading-none`}>{stat.player}</h2>
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                      {idx === 0 ? '🏆 Najveći Hit Rate' : `Rank #${idx + 1}`}
-                    </span>
-                  </div>
-                  <div className="text-right">{streakLabel(stat)}</div>
+                  <div className="text-right pt-1">{streakLabel(stat)}</div>
                 </div>
-                <div className="space-y-3 p-4 rounded-2xl" style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Hit %</span>
-                    <span className={`font-black ${stat.hitRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
-                      {stat.hitRate}% <span className="text-[10px] text-gray-500">({stat.wins}/{stat.totalResolved})</span>
+
+                <div className="space-y-2.5 p-3 rounded-2xl mt-auto" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                  <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
+                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Hit %</span>
+                    <span className={`font-black text-xs ${stat.hitRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+                      {stat.hitRate}% <span className="text-[8px] text-gray-500">({stat.wins}/{stat.totalResolved})</span>
                     </span>
                   </div>
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Pros. Igrana Kvota</span>
-                    <span className="font-black text-white">{stat.avgPlayed}</span>
+                  <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
+                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-widest">pros. igrana kvota</span>
+                    <span className="font-black text-xs text-white">{stat.avgPlayed}</span>
                   </div>
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Pros. Pogođena Kvota</span>
-                    <span className={`font-black ${p.text}`}>{stat.avgWon}</span>
+                  <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
+                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-widest">pros. pogođena kvota</span>
+                    <span className="font-black text-xs text-white">{stat.avgWon}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Ukupno Poena</span>
-                    <span className={`font-black ${idx === 0 ? 'text-yellow-400' : 'text-white'}`}>{stat.totalScore.toFixed(2)}</span>
+                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Total Score</span>
+                    <span className={`font-black text-sm ${idx === 0 ? 'text-yellow-400' : 'text-white'}`}>{stat.totalScore.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -190,119 +339,190 @@ export default function Statistics({ allBets, onBack }: Props) {
           })}
         </div>
 
-        {/* SCORE OVER TIME */}
+        {/* ── 2. STANDARD INLINE VIEWPORT CHART CONTAINER ── */}
         {mounted && timelineData.length > 0 && (
-          <div className="p-6 rounded-3xl backdrop-blur-md shadow-xl" style={cardStyle}>
-            <div className="mb-6">
-              <h3 className="text-xs font-black uppercase tracking-[0.3em] text-yellow-400/50">⚽ Napredak Sezone</h3>
-              <p className="text-xl font-black uppercase italic tracking-tighter">Score Kroz Vrijeme</p>
+          <div className="p-4 rounded-3xl backdrop-blur-md shadow-xl" style={cardStyle}>
+            <div className="mb-4 flex justify-between items-center">
+              <div>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-400/50">⚽ Tok</h3>
+                <p className="text-lg font-black uppercase italic tracking-tighter leading-none">Trka za titulu</p>
+              </div>
+              <button
+                onClick={() => setIsFullscreen(true)}
+                className="p-2 rounded-xl bg-white/5 border border-white/10 text-xs font-black hover:bg-white/10 active:scale-95 transition-all text-yellow-400"
+                title="Fullscreen Mode"
+              >
+                ⛶ Fullscreen
+              </button>
             </div>
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={timelineData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                <XAxis dataKey="date" stroke="#333" tick={{ fontSize: 10, fill: '#555' }} tickLine={false} />
-                <YAxis stroke="#333" tick={{ fontSize: 10, fill: '#555' }} tickLine={false} axisLine={false} />
-                <Tooltip {...tooltipStyle} />
-                <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em', paddingTop: '16px' }} />
-                {PLAYERS.map(p => (
-                  <Line key={p} type="monotone" dataKey={p} stroke={PLAYER_THEMES[p].hex} strokeWidth={2.5} dot={false} activeDot={{ r: 5, strokeWidth: 0 }} />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+            
+            <div className="w-full -ml-4 pr-2">
+              {renderRaceChart(260)}
+            </div>
           </div>
         )}
 
-        {/* RADAR PLAYER PROFILE */}
-        {mounted && (
-          <div className="p-6 rounded-3xl backdrop-blur-md shadow-xl" style={cardStyle}>
-            <div className="mb-6">
-              <h3 className="text-xs font-black uppercase tracking-[0.3em] text-yellow-400/50">⚽ DNA Igrača</h3>
-              <p className="text-xl font-black uppercase italic tracking-tighter">Player Profile</p>
-            </div>
-            <div className="flex gap-2 flex-wrap mb-6">
-              {PLAYERS.map(p => {
-                const pt = PLAYER_THEMES[p];
-                const isActive = activeRadarPlayer === p;
-                return (
-                  <button key={p} onClick={() => setActiveRadarPlayer(p)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-black uppercase tracking-widest transition-all ${
-                      isActive ? `${pt.border} bg-white/10 ${pt.text}` : 'border-white/10 text-gray-500 hover:text-white hover:bg-white/5'
-                    }`}>
-                    <img src={pt.icon} className="w-5 h-5 rounded-full object-cover" alt={p} />
-                    {p}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex flex-col md:flex-row items-center gap-8">
-              <ResponsiveContainer width="100%" height={280}>
-                <RadarChart data={buildRadarData(activeRadarPlayer)} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
-                  <PolarGrid stroke="#1a2040" />
-                  <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10, fill: '#888', fontWeight: 'bold' }} />
-                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-                  <Radar name={activeRadarPlayer} dataKey="value"
-                    stroke={PLAYER_THEMES[activeRadarPlayer].hex} fill={PLAYER_THEMES[activeRadarPlayer].hex}
-                    fillOpacity={0.25} strokeWidth={2} />
-                  <Tooltip {...tooltipStyle} formatter={(val: any) => [`${val}`, 'Score (0–100)']} />
-                </RadarChart>
-              </ResponsiveContainer>
-              <div className="w-full md:w-56 space-y-3 shrink-0">
-                {buildRadarData(activeRadarPlayer).map(d => (
-                  <div key={d.metric} className="flex justify-between items-center">
-                    <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">{d.metric}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${d.value}%`, background: PLAYER_THEMES[activeRadarPlayer].hex }} />
-                      </div>
-                      <span className="text-xs font-black text-white w-8 text-right">{d.value}</span>
-                    </div>
-                  </div>
-                ))}
+        {/* ── 3. HISTORICAL ALL-TIME AWARDS SECTIONS ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          
+          {/* ALL TIME WIN STREAK PODIUM */}
+          <div className="p-4 rounded-3xl backdrop-blur-md relative overflow-hidden shadow-xl"
+            style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.1) 0%, rgba(0,0,0,0.3) 100%)', border: '1px solid rgba(34,197,94,0.15)' }}>
+            <div className="absolute top-0 right-0 p-3 opacity-[0.04] text-6xl rotate-12 select-none">🍀</div>
+            <div className="flex items-center gap-2 mb-3 relative z-10">
+              <span className="text-2xl drop-shadow-lg">🍀</span>
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest text-green-400 italic">Retard</h3>
+                <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Najviše pogodaka zaredom.</p>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* WALL OF SHAME */}
-        <div className="p-6 rounded-3xl backdrop-blur-md relative overflow-hidden shadow-xl"
-          style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(0,0,0,0.5) 100%)', border: '1px solid rgba(239,68,68,0.25)' }}>
-          <div className="absolute top-0 right-0 p-4 opacity-5 text-8xl rotate-12 select-none">🤡</div>
-          <div className="flex items-center gap-3 mb-6 relative z-10">
-            <span className="text-3xl drop-shadow-lg">🤡</span>
-            <div>
-              <h3 className="text-xl font-black uppercase tracking-widest text-red-500 italic">Zid Srama</h3>
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Najmanja muda</p>
+            <div className="relative z-10">
+              {retardi.length === 0 ? (
+                <div className="text-center py-2 text-[9px] uppercase font-black tracking-widest text-gray-600">Nema zaređanih</div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {retardi.map(r => (
+                    <div key={r.player} className="flex items-center gap-2 bg-black/40 border border-green-500/20 p-2 rounded-xl flex-1 min-w-[120px]">
+                      <img src={PLAYER_THEMES[r.player].icon} alt={r.player} className="w-8 h-8 rounded-full border border-green-500/50 shrink-0" />
+                      <div className="flex flex-col">
+                        <span className="text-xs font-black text-white uppercase leading-none">{r.player}</span>
+                        <span className="text-[10px] font-black text-green-400 mt-0.5">🏆 {r.maxWinStreak} tipova</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-          <div className="space-y-3 relative z-10">
-            {smallestOdds.map((match, idx) => {
-              const pt = PLAYER_THEMES[match.player];
-              return (
-                <div key={idx} className="flex items-center justify-between p-3 md:p-4 rounded-2xl transition-colors"
-                  style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div className="flex items-center gap-4">
-                    <span className="text-xl font-black text-red-500 w-12 text-center drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]">{match.odd.toFixed(2)}</span>
-                    <div className="w-px h-8 bg-white/10 mx-2 hidden md:block" />
-                    <div className="flex flex-col">
-                      <span className="text-xs md:text-sm font-bold text-white uppercase truncate max-w-[150px] md:max-w-xs">{match.name}</span>
-                      <span className={`text-[10px] font-black uppercase tracking-widest ${pt.text}`}>Igrao: {match.player}</span>
+
+          {/* ALL TIME LOSS STREAK PODIUM */}
+          <div className="p-4 rounded-3xl backdrop-blur-md relative overflow-hidden shadow-xl"
+            style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.1) 0%, rgba(0,0,0,0.3) 100%)', border: '1px solid rgba(168,85,247,0.15)' }}>
+            <div className="absolute top-0 right-0 p-3 opacity-[0.04] text-6xl rotate-12 select-none">😭</div>
+            <div className="flex items-center gap-2 mb-3 relative z-10">
+              <span className="text-2xl drop-shadow-lg">😭</span>
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest text-purple-400 italic">Najveći Jadnik</h3>
+                <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Najviše promašenih zaredom</p>
+              </div>
+            </div>
+            <div className="relative z-10">
+              {jadnici.length === 0 ? (
+                <div className="text-center py-2 text-[9px] uppercase font-black tracking-widest text-gray-600">Nema losih streakova.</div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {jadnici.map(j => (
+                    <div key={j.player} className="flex items-center gap-2 bg-black/40 border border-purple-500/20 p-2 rounded-xl flex-1 min-w-[120px]">
+                      <img src={PLAYER_THEMES[j.player].icon} alt={j.player} className="w-8 h-8 rounded-full border border-purple-500/50 grayscale shrink-0" />
+                      <div className="flex flex-col">
+                        <span className="text-xs font-black text-white uppercase leading-none">{j.player}</span>
+                        <span className="text-[10px] font-black text-purple-400 mt-0.5">❌ {j.maxLossStreak} tipova</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 🚀 MAX PERFECT DAYS (BOOM) PODIUM */}
+          <div className="p-4 rounded-3xl backdrop-blur-md relative overflow-hidden shadow-xl"
+            style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.1) 0%, rgba(0,0,0,0.3) 100%)', border: '1px solid rgba(234,179,8,0.15)' }}>
+            <div className="absolute top-0 right-0 p-3 opacity-[0.04] text-6xl rotate-12 select-none">🚀</div>
+            <div className="flex items-center gap-2 mb-3 relative z-10">
+              <span className="text-2xl drop-shadow-lg">🚀</span>
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest text-yellow-400 italic">Maher</h3>
+                <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Pogodio oba tipa u danu</p>
+              </div>
+            </div>
+            <div className="relative z-10">
+              {boomMasters.length === 0 ? (
+                <div className="text-center py-2 text-[9px] uppercase font-black tracking-widest text-gray-600">Nema dobijenih dnevnih tiketa</div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {boomMasters.map(b => (
+                    <div key={b.player} className="flex items-center gap-2 bg-black/40 border border-yellow-500/20 p-2 rounded-xl flex-1 min-w-[120px]">
+                      <img src={PLAYER_THEMES[b.player].icon} alt={b.player} className="w-8 h-8 rounded-full border border-yellow-500/50 shrink-0" />
+                      <div className="flex flex-col">
+                        <span className="text-xs font-black text-white uppercase leading-none">{b.player}</span>
+                        <span className="text-[10px] font-black text-yellow-400 mt-0.5">💥 {b.perfectDays} Puta</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+
+        {/* ── 4. WALL OF SHAME ── */}
+        <div className="p-4 rounded-3xl backdrop-blur-md relative overflow-hidden shadow-xl"
+          style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.1) 0%, rgba(0,0,0,0.3) 100%)', border: '1px solid rgba(239,68,68,0.15)' }}>
+          <div className="absolute top-0 right-0 p-3 opacity-[0.04] text-6xl rotate-12 select-none">🤡</div>
+          <div className="flex items-center gap-2 mb-4 relative z-10">
+            <span className="text-2xl drop-shadow-lg">🤡</span>
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-widest text-red-500 italic">Zid Srama</h3>
+              <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Najmanja muda</p>
+            </div>
+          </div>
+          <div className="space-y-2 relative z-10">
+            {smallestOdds.length === 0 ? (
+               <div className="text-center py-4 text-[9px] uppercase font-black tracking-widest text-gray-600">Nema jos tiketa.</div>
+            ) : (
+              smallestOdds.map((match, idx) => {
+                const pt = PLAYER_THEMES[match.player];
+                return (
+                  <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl transition-colors"
+                    style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(239,68,68,0.1)' }}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-base font-black text-red-500 w-9 text-center drop-shadow-[0_0_8px_rgba(239,68,68,0.3)]">{match.odd.toFixed(2)}</span>
+                      <div className="w-px h-6 bg-white/10 shrink-0" />
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-bold text-white uppercase truncate max-w-[140px] md:max-w-xs leading-tight">{match.name}</span>
+                        <span className={`text-[8px] font-black uppercase tracking-widest mt-0.5 ${pt.text}`}>{match.player}</span>
+                      </div>
+                    </div>
+                    <div className="text-lg px-2 shrink-0">
+                      {match.status === 'loss' ? '❌' : match.status === 'win' ? '✅' : '⏳'}
                     </div>
                   </div>
-                  <div className="text-2xl px-2">
-                    {match.status === 'loss' ? '❌' : match.status === 'win' ? '✅' : '⏳'}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
+
       </div>
 
+      {/* ── 5. FULLSCREEN LANDSCAPE MODAL BACKDROP PORTAL ── */}
+      {isFullscreen && (
+        <div className="fixed inset-0 bg-[#040712] z-[9999] flex flex-col justify-center items-center p-4 animate-fadeIn">
+          <div className="absolute top-3 left-4 flex items-center gap-2 text-white/40 text-[9px] font-black uppercase tracking-wider">
+            <span>🔄 Rotiraj telefon</span>
+          </div>
+
+          <button
+            onClick={() => setIsFullscreen(false)}
+            className="absolute top-3 right-4 z-[10000] bg-red-500/20 text-red-400 border border-red-500/40 px-3 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+          >
+            ✕ Close
+          </button>
+          
+          <div className="w-full h-full max-h-[85vh] flex flex-col justify-center mt-6 pr-4 pl-2">
+            {renderRaceChart(window.innerHeight * 0.7)}
+          </div>
+        </div>
+      )}
+
       {/* TICKER */}
-      <div className="relative z-10 w-full overflow-hidden py-2 mt-8" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.3)' }}>
+      <div className="relative z-10 w-full overflow-hidden py-1.5 mt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.3)', marginInline: '-12px', paddingInline: '12px', width: 'calc(100% + 24px)' }}>
         <div className="wc-ticker whitespace-nowrap inline-block">
           {[0, 1].map(i => (
-            <span key={i} className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-400/20 px-2">
-              📊&nbsp; WORLD CUP 2026 &nbsp;·&nbsp; STATISTIKA &nbsp;·&nbsp; BROJKE NE LAŽU &nbsp;·&nbsp; HIT RATE &nbsp;·&nbsp; SNIPER SEZONE &nbsp;·&nbsp; USA · CANADA · MEXICO &nbsp;·&nbsp;
+            <span key={i} className="text-[9px] font-black uppercase tracking-[0.3em] text-yellow-400/20 px-2">
+              📊&nbsp; WORLD CUP &nbsp;·&nbsp; STATISTICS &nbsp;·&nbsp; HIT RATE &nbsp;·&nbsp;
             </span>
           ))}
         </div>
