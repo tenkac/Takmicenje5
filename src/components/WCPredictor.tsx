@@ -418,11 +418,12 @@ export default function WCPredictor({ activePlayer }: Props) {
                                 - Mobile: Horizontal flex layout with swipe snapping, touch-pan-y, and overscroll-x-none
                                 - PC (md+): Switches to a crisp multi-column grid layout, restores default touch/overscroll behaviors
                             */}
-                              <div className="flex overflow-x-auto pb-4 -mx-4 px-4 scroll-px-4 gap-3 snap-x snap-mandatory scroll-smooth overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 md:mx-0 md:px-0 md:pb-0 md:overflow-x-visible">                              {Object.entries(userData.predictions.groups || {}).map(([gLetter, teams]) => (
+                              <div className="flex overflow-x-auto pb-4 -mx-4 px-4 scroll-px-4 gap-3 snap-x snap-proximity scroll-smooth overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 md:mx-0 md:px-0 md:pb-0 md:overflow-x-visible md:overscroll-auto md:touch-auto">
+                                {Object.entries(userData.predictions.groups || {}).map(([gLetter, teams]) => (
                                 <div
-                                  key={gLetter}
-                                  className="flex-none w-[165px] sm:w-[185px] md:w-full snap-start snap-always"
-                                >
+                                    key={gLetter}
+                                    className="flex-none w-[165px] sm:w-[185px] md:w-full snap-start"
+                                  >
                                   <div className="bg-black/60 p-3.5 rounded-2xl border border-white/5 hover:border-yellow-400/30 transition-all duration-300 h-full shadow-inner flex flex-col justify-between">
                                     <div>
                                       <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2.5">
