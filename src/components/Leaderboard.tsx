@@ -6,9 +6,7 @@ import { supabase } from '../lib/supabase';
 
 interface Props {
   allBets: AllPlayersData;
-  onBack: () => void;
   onPlayerClick: (playerName: string) => void;
-  onViewStats: () => void;
 }
 
 const PLAYER_THEMES: Record<string, { text: string, border: string, icon: string, hex: string }> = {
@@ -19,7 +17,7 @@ const PLAYER_THEMES: Record<string, { text: string, border: string, icon: string
   "Dzoni":  { text: "text-yellow-500", border: "border-yellow-500", icon: "/Avatars/dzoni.jpg",  hex: "#eab308" },
 };
 
-export default function Leaderboard({ allBets, onBack, onPlayerClick, onViewStats }: Props) {
+export default function Leaderboard({ allBets, onPlayerClick }: Props) {
   const [mounted, setMounted] = useState(false);
   
   // 👇 2. STATE FOR PREDICTIONS
@@ -42,32 +40,16 @@ export default function Leaderboard({ allBets, onBack, onPlayerClick, onViewStat
     // 🏆 REAL RESULTS CONFIGURATION (UPDATE THIS WHEN THE TOURNAMENT HAPPENS)
     // ========================================================================
     const REAL_RESULTS = {
-      // Grupe moraju biti EXACT string sa emojijem (npr: "🇲🇽 Meksiko") jer se to vuče iz Drag&Drop-a
       groups: {
-        A: [],
-        B: [],
-        C: [],
-        D: [],
-        E: [],
-        F: [],
-        G: [],
-        H: [],
-        I: [],
-        J: [],
-        K: [],
-        L: [],
+        A: [], B: [], C: [], D: [], E: [], F: [], G: [], H: [], I: [], J: [], K: [], L: []
       } as Record<string, string[]>,
-
-      // Polufinalisti, pobednik i kopačka se unose slobodno, pa je provera CASE-INSENSITIVE
-      semis: [] as string[], // npr: ["SAD", "Brazil", "Francuska", "Holandija"]
-      winner: "",            // npr: "Brazil"
-      goldenBoot: ""         // npr: "Mbappe"
+      semis: [] as string[], 
+      winner: "",            
+      goldenBoot: ""         
     };
 
-    // Helper za ignorisanje velikih/malih slova kod ručno unesenih tekstova (Brazil == brazil)
     const normalize = (s: string) => s?.trim().toLowerCase() || "";
 
-    // -- Korak A: Izračunaj ko ima najviše pogođenih pozicija u grupama --
     const playerGroupHits: Record<string, number> = {};
     let hasAnyGroupResults = false;
 
@@ -76,7 +58,6 @@ export default function Leaderboard({ allBets, onBack, onPlayerClick, onViewStat
       Object.keys(REAL_RESULTS.groups).forEach(gLetter => {
         const realGroup = REAL_RESULTS.groups[gLetter];
         const predGroup = user.predictions.groups?.[gLetter] || [];
-        // Ako smo uneli rezultate za ovu grupu (mora imati 4 tima)
         if (realGroup.length === 4) {
           hasAnyGroupResults = true;
           for(let i = 0; i < 4; i++) {
@@ -89,7 +70,6 @@ export default function Leaderboard({ allBets, onBack, onPlayerClick, onViewStat
 
     const maxGroupHits = Math.max(0, ...Object.values(playerGroupHits));
 
-    // -- Korak B: Kalkulacija tiketa i prognoza --
     let biggestOdd = { player: "---", odds: 0, match: "No Wins Yet" };
     let mostWins   = { player: "---", count: 0 };
 
@@ -98,7 +78,6 @@ export default function Leaderboard({ allBets, onBack, onPlayerClick, onViewStat
       let totalScore = 0, winCount = 0, pendingCount = 0;
       const allMatches = rows.flatMap(r => [r.match1, r.match2]);
 
-      // 1. Dnevni Tiketi
       allMatches.forEach(m => {
         if (m.status === 'win') {
           totalScore += m.odds;
@@ -108,25 +87,19 @@ export default function Leaderboard({ allBets, onBack, onPlayerClick, onViewStat
         if (m.status === 'pending') pendingCount++;
       });
 
-      // 2. Prognoze (Bonus Poeni)
       const userPredRow = predictionsData.find(p => p.player === player);
       let predictionPoints = 0;
 
       if (userPredRow && userPredRow.predictions) {
          const preds = userPredRow.predictions;
          
-         // Polufinalisti (+0.5 ea)
          preds.semis?.forEach((team: string) => {
            if (team && REAL_RESULTS.semis.map(normalize).includes(normalize(team))) predictionPoints += 0.5;
          });
          
-         // Osvajač (+2)
          if (preds.winner && normalize(preds.winner) === normalize(REAL_RESULTS.winner)) predictionPoints += 2;
-         
-         // Kopačka (+2)
          if (preds.goldenBoot && normalize(preds.goldenBoot) === normalize(REAL_RESULTS.goldenBoot)) predictionPoints += 2;
 
-         // Grupe (+3 za najboljeg, +1 za ostale koji su učestvovali)
          if (hasAnyGroupResults) {
            if (playerGroupHits[player] === maxGroupHits && maxGroupHits > 0) {
              predictionPoints += 3;
@@ -136,7 +109,6 @@ export default function Leaderboard({ allBets, onBack, onPlayerClick, onViewStat
          }
       }
 
-      // Dodaj bonus poene na ukupan skor
       totalScore += predictionPoints;
 
       if (winCount > mostWins.count) mostWins = { player, count: winCount };
@@ -150,12 +122,12 @@ export default function Leaderboard({ allBets, onBack, onPlayerClick, onViewStat
         score: parseFloat(totalScore.toFixed(2)), 
         form: recentForm, 
         pendingCount, 
-        predictionPoints // 👈 Passed down to UI
+        predictionPoints 
       };
     }).sort((a, b) => b.score - a.score);
 
     return { playerStats, biggestOdd, mostWins };
-  }, [allBets, predictionsData]); // Re-run when bets OR predictions change
+  }, [allBets, predictionsData]); 
 
   const [first, second, third, ...chasers] = playerStats;
 
@@ -191,7 +163,6 @@ export default function Leaderboard({ allBets, onBack, onPlayerClick, onViewStat
         className="min-h-screen p-4 md:p-8 font-sans text-white relative overflow-hidden"
         style={{ background: 'linear-gradient(165deg, #05091a 0%, #080d20 45%, #040810 100%)' }}
       >
-        {/* WC background layers */}
         <div className="fixed inset-0 wc-jersey-bg pointer-events-none" />
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
           <div className="wc-beam-l absolute" style={{ top: 0, left: '18%', width: '240px', height: '65vh', background: 'linear-gradient(178deg, rgba(250,204,21,0.14) 0%, transparent 80%)', transformOrigin: 'top center', filter: 'blur(42px)' }} />
@@ -205,21 +176,12 @@ export default function Leaderboard({ allBets, onBack, onPlayerClick, onViewStat
           <span className="wc-float-med  absolute text-3xl" style={{ opacity: 0.06, top: '50%',    right: '4%' }}>⚽</span>
         </div>
 
-        {/* HEADER */}
-        <div className="relative z-10 flex justify-between items-center mb-8">
-          <button onClick={onBack} className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl border border-white/10 transition-all text-xs font-bold uppercase tracking-widest">
-            ← Menu
-          </button>
+        {/* ── CENTERED TOP HEADER BAR ── */}
+        <div className="relative z-10 flex justify-center items-center mb-8">
           <div className="text-center">
             <h2 className="text-sm font-bold text-yellow-400 uppercase tracking-widest">WORLD CUP 2026</h2>
             <h1 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter">Podijum</h1>
           </div>
-          <button
-            onClick={onViewStats}
-            className="bg-yellow-400/10 hover:bg-yellow-400/20 text-yellow-400 px-4 py-2 rounded-xl border border-yellow-400/30 transition-all text-xs font-bold uppercase tracking-widest shadow-[0_0_15px_rgba(250,204,21,0.1)]"
-          >
-            Stats →
-          </button>
         </div>
 
         <div className="max-w-4xl mx-auto relative z-10">
@@ -378,7 +340,6 @@ function PodiumItem({ rank, data, theme, height, color, badge, isWinner = false,
         <AnimatedScore target={data.score} isWinner={isWinner} mounted={mounted} delay={delay} />
         <span className="text-[10px] md:text-xs font-bold text-white/30 uppercase tracking-[0.2em] mb-2">Poena</span>
         
-        {/* 👇 3. DISPLAY PREDICTION POINTS BADGE ON PODIUM */}
         {data.predictionPoints > 0 && (
           <div className="mb-2 px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded-full flex items-center shadow-[0_0_10px_rgba(168,85,247,0.2)]">
             <span className="text-[8px] md:text-[9px] font-black text-purple-300 uppercase tracking-widest">+{data.predictionPoints} Prognoze</span>

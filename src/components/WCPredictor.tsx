@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 
 interface Props {
-  onBack: () => void;
+  // onBack REMOVED NATIVELY FOR THE BOTTOM NAVBAR LIFECYCLE
   activePlayer: string;
 }
 
@@ -82,7 +82,7 @@ const INITIAL_GROUPS: Record<string, string[]> = {
   L: ["🏴󠁧󠁢󠁥󠁮󠁧󠁿 Engleska", "🇭🇷 Hrvatska", "🇬🇭 Gana", "🇵🇦 Panama"],
 };
 
-export default function WCPredictor({ onBack, activePlayer }: Props) {
+export default function WCPredictor({ activePlayer }: Props) {
   const [viewMode, setViewMode] = useState<"edit" | "radar">("edit");
   const [groups, setGroups] = useState(INITIAL_GROUPS);
   const [semis, setSemis] = useState(["", "", "", ""]);
@@ -158,7 +158,6 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
       if (error) throw error;
       
       showToast("Prognoza uspešno sačuvana i zaključana!", "success");
-      
       setHasSubmitted(true);
       await loadRadarData();
       setViewMode("radar");
@@ -184,7 +183,7 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
 
   return (
     <div 
-      className="min-h-screen flex flex-col relative overflow-y-auto font-sans text-white"
+      className="min-h-screen flex flex-col relative overflow-y-auto font-sans text-white pb-24"
       style={{ background: 'linear-gradient(165deg, #05091a 0%, #080d20 45%, #040810 100%)' }}
     >
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -223,16 +222,12 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
               transition={{ duration: 0.3 }}
               className="flex flex-col w-full"
             >
-              <div className="flex items-center justify-between mb-10">
-                <button onClick={onBack} className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-colors border border-white/10 bg-white/5">
-                  ← Nazad
-                </button>
-                <div className="text-center">
+              {/* CLEANED TITLE ZONE HEADER */}
+              <div className="flex items-center justify-center mb-10 text-center w-full">
+                <div>
                   <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter text-yellow-400" style={{ textShadow: '0 0 20px rgba(250,204,21,0.3)' }}>WORLD CUP PREDICTOR</h1>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em] mt-1">48 Nacija · 12 Grupa</p>
                 </div>
-                {/* 👇 SEE ALL / RADAR BUTTON HAS BEEN REMOVED FROM HERE */}
-                <div className="w-16" />
               </div>
 
               {/* FAZA PO GRUPAMA */}
@@ -342,20 +337,8 @@ export default function WCPredictor({ onBack, activePlayer }: Props) {
               transition={{ duration: 0.4 }}
               className="flex flex-col w-full pb-16"
             >
-              <div className="flex items-center justify-between mb-12">
-                <button onClick={onBack} className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 transition-all border border-white/20 backdrop-blur-md">
-                  ← Glavni Meni
-                </button>
-                
-                <div className="text-center hidden md:block">
-                  <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">
-                    ZAKLJUČANE <span className="text-yellow-400">PROGNOZE</span>
-                  </h1>
-                </div>
-                <div className="w-[155px] hidden md:block" /> 
-              </div>
-
-              <div className="text-center mb-10 md:hidden">
+              {/* CLEANED TITLE LOG ZAKLJUČANE PROGNOZE */}
+              <div className="flex items-center justify-center mb-12 text-center w-full">
                 <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">
                   ZAKLJUČANE <span className="text-yellow-400">PROGNOZE</span>
                 </h1>

@@ -269,15 +269,11 @@ export default function Statistics({ allBets, onBack }: Props) {
       </div>
 
       {/* HEADER */}
-      <div className="relative z-10 flex justify-between items-center mb-5 max-w-6xl mx-auto pt-2">
-        <button onClick={onBack} className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl border border-white/10 transition-all text-[10px] font-bold uppercase tracking-widest active:scale-95">
-          ← Back
-        </button>
+      <div className="relative z-10 flex justify-center items-center mb-5 max-w-6xl mx-auto pt-2">
         <div className="text-center shrink-0">
           <h2 className="text-[9px] font-black text-yellow-400 uppercase tracking-widest">⚽ World Cup</h2>
-          <h1 className="text-xl font-black italic uppercase tracking-tighter">Stats</h1>
+          <h1 className="text-xl font-black italic uppercase tracking-tighter">Statistika</h1>
         </div>
-        <div className="w-[60px]" />
       </div>
 
       <div className="relative z-10 max-w-6xl mx-auto space-y-4">
@@ -464,7 +460,7 @@ export default function Statistics({ allBets, onBack }: Props) {
           <div className="flex items-center gap-2 mb-4 relative z-10">
             <span className="text-2xl drop-shadow-lg">🤡</span>
             <div>
-              <h3 className="text-sm font-black uppercase tracking-widest text-red-500 italic">Zid Srama</h3>
+              <h3 className="text-sm font-black uppercase tracking-wider text-red-500 italic">Zid Srama</h3>
               <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Najmanja muda</p>
             </div>
           </div>
@@ -500,10 +496,6 @@ export default function Statistics({ allBets, onBack }: Props) {
       {/* ── 5. FULLSCREEN LANDSCAPE MODAL BACKDROP PORTAL ── */}
       {isFullscreen && (
         <div className="fixed inset-0 bg-[#040712] z-[9999] flex flex-col justify-center items-center p-4 animate-fadeIn">
-          <div className="absolute top-3 left-4 flex items-center gap-2 text-white/40 text-[9px] font-black uppercase tracking-wider">
-            <span>🔄 Rotiraj telefon</span>
-          </div>
-
           <button
             onClick={() => setIsFullscreen(false)}
             className="absolute top-3 right-4 z-[10000] bg-red-500/20 text-red-400 border border-red-500/40 px-3 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"

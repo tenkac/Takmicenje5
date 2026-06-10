@@ -12,7 +12,7 @@ interface Props {
   setActivePlayer: (player: string) => void;
   onAddPick: (date: string, sport: string, matchName: string, tip: string, odds: number) => void;
   onToggleStatus: (date: string, matchKey: "match1" | "match2") => void;
-  onBack: () => void;
+  // onBack REMOVED NATIVELY FOR THE BOTTOM NAVBAR Lifecycle
   userEmail?: string;
   onDeletePick?: (date: string, playerName: string, matchKey: "match1" | "match2") => void;
 }
@@ -25,7 +25,7 @@ const PLAYER_THEMES: Record<string, { text: string, border: string, icon: string
   "Dzoni":  { text: "text-yellow-400", border: "border-yellow-500/50", icon: "/Avatars/dzoni.jpg",  hex: "#eab308" },
 };
 
-export default function PlayerTable({ allBets, activePlayer, setActivePlayer, onAddPick, onToggleStatus, onBack, userEmail, onDeletePick }: Props) {
+export default function PlayerTable({ allBets, activePlayer, setActivePlayer, onAddPick, onToggleStatus, userEmail, onDeletePick }: Props) {
   const [form, setForm] = useState({ date: new Date().toLocaleDateString('en-CA'), sport: "⚽", matchName: "", tip: "", odds: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [flashMap, setFlashMap] = useState<Record<string, 'win' | 'loss' | null>>({});
@@ -109,11 +109,9 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     onToggleStatus(date, matchKey);
   }, [allBets, onToggleStatus, editingCardKey]);
 
-  // 👇 BUFFED SYSTEM DB ENGINE: Očvršćena pretraga imena pomoću `.ilike` i `.trim()`
   const executeDirectDbUpdate = async (date: string, matchKey: "match1" | "match2", customValueObj: any) => {
     const cleanPlayerName = activePlayer.trim();
     try {
-      // 1. Povuci red koristeći fleksibilni ILIKE filter (rešava problem sa malim/velikim slovima i razmacima)
       const { data, error: fetchErr } = await supabase
         .from('player_bets') 
         .select('bets')
@@ -126,7 +124,6 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
 
       const currentBetsArray = Array.isArray(data.bets) ? data.bets : [];
 
-      // 2. Mapiraj niz i izmeni ciljanu utakmicu za prosleđeni datum
       const updatedBetsArray = currentBetsArray.map((ticket: any) => {
         if (ticket.date === date) {
           return {
@@ -140,7 +137,6 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
         return ticket;
       });
 
-      // 3. Upiši nazad ceo izmenjeni JSON niz u bazu
       const { data: updateCheck, error: updateErr } = await supabase
         .from('player_bets')
         .update({ bets: updatedBetsArray })
@@ -282,22 +278,18 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
           <div className="wc-beam-r absolute" style={{ top: 0, right: '25%', width: '250px', height: '60vh', background: 'linear-gradient(178deg, rgba(250,204,21,0.12) 0%, transparent 80%)', filter: 'blur(50px)' }} />
         </div>
 
-        {/* ── STICKY TOP BAR ── */}
-        <div className="sticky top-0 z-50 backdrop-blur-md bg-[#05091a]/85 border-b border-white/5 px-4 py-3 flex flex-col gap-3">
-          <div className="max-w-7xl w-full mx-auto flex justify-between items-center">
-            <button onClick={onBack} className="bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full border border-white/10 transition-all active:scale-95">
-              ← Meni
-            </button>
+        {/* ── STICKY TOP BAR (CLEANED OF NAVIGATION ARTIFACTS) ── */}
+        <div className="sticky top-0 z-50 backdrop-blur-md bg-[#05091a]/85 border-b border-white/5 px-4 py-4 flex flex-col gap-4">
+          <div className="max-w-7xl w-full mx-auto flex flex-col items-center justify-center relative">
             <div className="text-center">
-              <div className="text-[8px] font-black text-yellow-400/60 uppercase tracking-[0.4em] mb-0.5">WORLD CUP 2026</div>
-              <h1 className="text-sm md:text-xl font-black uppercase tracking-widest">TAKMIČENJE <span className="text-yellow-400">5.0</span></h1>
+              <div className="text-[9px] font-black text-yellow-400/60 uppercase tracking-[0.4em] mb-1">WORLD CUP 2026</div>
+              <h1 className="text-xl font-black uppercase tracking-widest italic">TAKMIČENJE <span className="text-yellow-400">5.0</span></h1>
             </div>
             {isAdmin && (
-              <span className="bg-red-500/20 text-red-400 border border-red-500/30 text-[8px] font-black uppercase px-2 py-1 rounded-full tracking-widest animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+              <span className="absolute right-0 top-1/2 -translate-y-1/2 bg-red-500/20 text-red-400 border border-red-500/30 text-[8px] font-black uppercase px-2 py-1 rounded-full tracking-widest animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.2)]">
                 Admin Režim
               </span>
             )}
-            {!isAdmin && <div className="w-16" />}
           </div>
 
           {/* SUB-TAB TOGGLE */}
@@ -576,7 +568,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
         </div>
 
         {/* FOOTER TICKER */}
-        <div className="w-full overflow-hidden py-2 mt-8" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.3)' }}>
+        <div className="w-full overflow-hidden py-2 mt-8 mb-16" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.3)' }}>
           <div className="wc-ticker whitespace-nowrap inline-block">
             {[0, 1].map(i => (
               <span key={i} className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-400/20 px-2">
