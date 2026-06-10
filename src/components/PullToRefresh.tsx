@@ -44,8 +44,10 @@ export default function PullToRefresh({ onRefresh, children }: Props) {
         return;
       }
 
-      // Prevent the native overscroll/bounce — only when we're actually pulling
-      e.preventDefault();
+      // Prevent the native overscroll/bounce — ONLY if the browser allows it
+      if (e.cancelable) {
+        e.preventDefault();
+      }
 
       // √ dampening: feels elastic, not stiff
       const damp = Math.min(Math.sqrt(dy / 1.4) * 7, MAX_DAMP);

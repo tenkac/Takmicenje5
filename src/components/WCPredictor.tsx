@@ -242,8 +242,12 @@ export default function WCPredictor({ activePlayer }: Props) {
                       </div>
                       <Reorder.Group axis="y" values={groups[groupLetter]} onReorder={(newOrder) => handleReorder(groupLetter, newOrder)} className="flex flex-col gap-2">
                         {groups[groupLetter].map((team, idx) => (
-                          <Reorder.Item key={team} value={team} className="flex items-center justify-between p-3 rounded-xl bg-black/60 border border-white/5 cursor-grab active:cursor-grabbing hover:bg-white/10 transition-colors shadow-sm">
-                            <div className="flex items-center gap-3 pointer-events-none">
+                          <Reorder.Item
+                            key={team}
+                            value={team}
+                            className="touch-none flex items-center justify-between p-3 rounded-xl bg-black/60 border border-white/5 cursor-grab active:cursor-grabbing hover:bg-white/10 transition-colors shadow-sm"
+                          >                            
+                          <div className="flex items-center gap-3 pointer-events-none">
                               <span className={`text-sm font-black w-4 text-center ${idx === 0 ? 'text-yellow-400' :
                                 idx === 1 ? 'text-gray-300' :
                                   idx === 2 ? 'text-amber-500' :
@@ -410,13 +414,11 @@ export default function WCPredictor({ activePlayer }: Props) {
                           </span>
 
                           <div>
-                            {/* 
-                      Container Architecture:
-                     - Mobile: Horizontal flex layout with swipe snapping
-                     - PC (md+): Switches to a crisp multi-column grid layout, killing the scrollbar entirely
+                            {/* Container Architecture:
+                                - Mobile: Horizontal flex layout with swipe snapping, touch-pan-y, and overscroll-x-none
+                                - PC (md+): Switches to a crisp multi-column grid layout, restores default touch/overscroll behaviors
                             */}
-                            <div className="flex overflow-x-auto pb-4 -mx-4 px-4 gap-3 snap-x snap-mandatory scroll-smooth overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 md:mx-0 md:px-0 md:pb-0 md:overflow-x-visible">
-                              {Object.entries(userData.predictions.groups || {}).map(([gLetter, teams]) => (
+                              <div className="flex overflow-x-auto pb-4 -mx-4 px-4 scroll-px-4 gap-3 snap-x snap-mandatory scroll-smooth overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 md:mx-0 md:px-0 md:pb-0 md:overflow-x-visible">                              {Object.entries(userData.predictions.groups || {}).map(([gLetter, teams]) => (
                                 <div
                                   key={gLetter}
                                   className="flex-none w-[165px] sm:w-[185px] md:w-full snap-start snap-always"
