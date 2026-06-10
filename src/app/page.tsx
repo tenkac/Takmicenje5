@@ -200,7 +200,7 @@ export default function BettingApp() {
       </PullToRefresh>
 
       {/* ── YOUTUBE-STYLE BOTTOM NAVIGATION TAB BAR ── */}
-      <div className="fixed bottom-0 left-0 right-0 pt-2 pb-[calc(env(safe-area-inset-bottom)+10px)] bg-[#05091a]/90 border-t border-white/10 backdrop-blur-2xl flex justify-around items-center z-[999] shadow-[0_-12px_40px_rgba(0,0,0,0.8)] px-2">
+      <div className="fixed bottom-0 left-0 right-0 pt-2 pb-[calc(env(safe-area-inset-bottom)+20px)] bg-[#05091a]/90 border-t border-white/10 backdrop-blur-2xl flex justify-around items-center z-[999] shadow-[0_-12px_40px_rgba(0,0,0,0.8)] px-2">
 
         {/* 1. KRAJNJE LIJEVO: PROGNOZA */}
         <button

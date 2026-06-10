@@ -50,13 +50,7 @@ export default function LandingPage({ onNavigate }: Props) {
 
             {/* EYEBROW */}
             <div className="wc-slide-up-1 relative flex items-center justify-center gap-2 mb-5 w-full max-w-xs">
-              <div className="h-px flex-1 max-w-[40px] bg-gradient-to-r from-transparent to-yellow-400/30" />
-              <div className="px-3 py-1 rounded-full border border-yellow-400/20 bg-black/50 backdrop-blur-md">
-                <span className="text-yellow-400 text-[10px] font-black uppercase tracking-[0.25em] block">
-                  ⚽ 2026 EDITION
-                </span>
-              </div>
-              <div className="h-px flex-1 max-w-[40px] bg-gradient-to-l from-transparent to-yellow-400/30" />
+             
             </div>
 
             {/* TROPHY */}
