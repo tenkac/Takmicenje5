@@ -18,11 +18,11 @@ interface Props {
 }
 
 const PLAYER_THEMES: Record<string, { text: string, border: string, icon: string, hex: string }> = {
-  "Vlado":  { text: "text-blue-400",   border: "border-blue-500/50",   icon: "/Avatars/vlado.jpg",  hex: "#3b82f6" },
-  "Fika":   { text: "text-red-400",    border: "border-red-500/50",    icon: "/Avatars/fika.jpg",   hex: "#ef4444" },
-  "Labud":  { text: "text-green-400",  border: "border-green-500/50",  icon: "/Avatars/labud.jpg",  hex: "#22c55e" },
-  "Ilija":  { text: "text-purple-400", border: "border-purple-500/50", icon: "/Avatars/ilija.jpg",  hex: "#a855f7" },
-  "Dzoni":  { text: "text-yellow-400", border: "border-yellow-500/50", icon: "/Avatars/dzoni.jpg",  hex: "#eab308" },
+  "Vlado":  { text: "text-blue-400",   border: "border-blue-500/50",   icon: "/Avatars/vlado.webp",  hex: "#3b82f6" },
+  "Fika":   { text: "text-red-400",    border: "border-red-500/50",    icon: "/Avatars/fika.webp",   hex: "#ef4444" },
+  "Labud":  { text: "text-green-400",  border: "border-green-500/50",  icon: "/Avatars/labud.webp",  hex: "#22c55e" },
+  "Ilija":  { text: "text-purple-400", border: "border-purple-500/50", icon: "/Avatars/ilija.webp",  hex: "#a855f7" },
+  "Dzoni":  { text: "text-yellow-400", border: "border-yellow-500/50", icon: "/Avatars/dzoni.webp",  hex: "#eab308" },
 };
 
 export default function PlayerTable({ allBets, activePlayer, setActivePlayer, onAddPick, onToggleStatus, userEmail, onDeletePick }: Props) {
@@ -237,7 +237,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     return { groups, totalCount };
   }, [allBets, today]);
 
-  const pt = PLAYER_THEMES[activePlayer] || { text: "text-white", border: "border-white/10", icon: "/Avatars/default.jpg", hex: "#ffffff" };
+  const pt = PLAYER_THEMES[activePlayer] || { text: "text-white", border: "border-white/10", icon: "/Avatars/default.webp", hex: "#ffffff" };
 
   return (
     <>

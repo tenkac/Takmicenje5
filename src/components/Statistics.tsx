@@ -10,11 +10,11 @@ interface Props {
 }
 
 const PLAYER_THEMES: Record<string, { text: string; border: string; icon: string; gradient: string; hex: string }> = {
-  "Vlado":  { text: "text-blue-500",   border: "border-blue-500/30",   icon: "/Avatars/vlado.jpg",  gradient: "from-blue-600 to-blue-400",    hex: "#3b82f6" },
-  "Fika":   { text: "text-red-500",    border: "border-red-500/30",    icon: "/Avatars/fika.jpg",   gradient: "from-red-600 to-red-400",      hex: "#ef4444" },
-  "Labud":  { text: "text-green-500",  border: "border-green-500/30",  icon: "/Avatars/labud.jpg",  gradient: "from-green-600 to-green-400",  hex: "#22c55e" },
-  "Ilija":  { text: "text-purple-500", border: "border-purple-500/30", icon: "/Avatars/ilija.jpg",  gradient: "from-purple-600 to-purple-400",hex: "#a855f7" },
-  "Dzoni":  { text: "text-yellow-500", border: "border-yellow-500/30", icon: "/Avatars/dzoni.jpg",  gradient: "from-yellow-600 to-yellow-400",hex: "#eab308" },
+  "Vlado":  { text: "text-blue-500",   border: "border-blue-500/30",   icon: "/Avatars/vlado.webp",  gradient: "from-blue-600 to-blue-400",    hex: "#3b82f6" },
+  "Fika":   { text: "text-red-500",    border: "border-red-500/30",    icon: "/Avatars/fika.webp",   gradient: "from-red-600 to-red-400",      hex: "#ef4444" },
+  "Labud":  { text: "text-green-500",  border: "border-green-500/30",  icon: "/Avatars/labud.webp",  gradient: "from-green-600 to-green-400",  hex: "#22c55e" },
+  "Ilija":  { text: "text-purple-500", border: "border-purple-500/30", icon: "/Avatars/ilija.webp",  gradient: "from-purple-600 to-purple-400",hex: "#a855f7" },
+  "Dzoni":  { text: "text-yellow-500", border: "border-yellow-500/30", icon: "/Avatars/dzoni.webp",  gradient: "from-yellow-600 to-yellow-400",hex: "#eab308" },
 };
 
 const CustomTooltip = ({ active, payload, label }: any) => {

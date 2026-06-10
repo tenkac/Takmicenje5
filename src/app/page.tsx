@@ -1,14 +1,14 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { AllPlayersData, Match, BettingRow, EMPTY_MATCH } from "../types";
-import LandingPage   from "../components/LandingPage";
-import Leaderboard   from "../components/Leaderboard";
-import PlayerTable   from "../components/PlayerTable";
-import Login         from "../components/Login";
+import LandingPage from "../components/LandingPage";
+import Leaderboard from "../components/Leaderboard";
+import PlayerTable from "../components/PlayerTable";
+import Login from "../components/Login";
 import PullToRefresh from "../components/PullToRefresh";
-import WCPredictor   from "../components/WCPredictor"; 
-import dynamic       from "next/dynamic";
-import { supabase }  from "../lib/supabase";
+import WCPredictor from "../components/WCPredictor";
+import dynamic from "next/dynamic";
+import { supabase } from "../lib/supabase";
 
 const Statistics = dynamic(() => import("../components/Statistics"), { ssr: false });
 
@@ -20,7 +20,7 @@ export default function BettingApp() {
   const [allBets, setAllBets] = useState<AllPlayersData>({
     Vlado: [], Fika: [], Labud: [], Ilija: [], Dzoni: [],
   });
-  const [session, setSession]     = useState<any>(null);
+  const [session, setSession] = useState<any>(null);
   const [appLoading, setAppLoading] = useState(true);
 
   const viewHistory = useRef<AppView[]>(["landing"]);
@@ -68,7 +68,7 @@ export default function BettingApp() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => subscription.unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRefresh = async () => {
@@ -88,10 +88,10 @@ export default function BettingApp() {
     const newMatch: Match = { sport, name: matchName, tip, odds, status: "pending" };
     setAllBets(prev => {
       const rows = prev[activePlayer] ? [...prev[activePlayer]] : [];
-      const idx  = rows.findIndex(r => r.date === date);
+      const idx = rows.findIndex(r => r.date === date);
       if (idx !== -1) {
         const row = { ...rows[idx] };
-        if      (row.match1.status === "empty") row.match1 = newMatch;
+        if (row.match1.status === "empty") row.match1 = newMatch;
         else if (row.match2.status === "empty") row.match2 = newMatch;
         else { alert("Maximum 2 picks per day allowed!"); return prev; }
         rows[idx] = row;
@@ -108,7 +108,7 @@ export default function BettingApp() {
     setAllBets(prev => {
       const rows = prev[activePlayer].map(row => {
         if (row.date === date && row[matchKey].status !== "empty") {
-          const s    = row[matchKey].status;
+          const s = row[matchKey].status;
           const next = s === "pending" ? "win" : s === "win" ? "loss" : "pending";
           return { ...row, [matchKey]: { ...row[matchKey], status: next } };
         }
@@ -120,7 +120,7 @@ export default function BettingApp() {
   };
 
   const getLoggedInPlayerName = () => {
-    if (!session?.user?.email) return "Vlado"; 
+    if (!session?.user?.email) return "Vlado";
     const name = session.user.email.split('@')[0];
     return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
   };
@@ -149,15 +149,15 @@ export default function BettingApp() {
         </h1>
         <p className="text-white/20 text-xs font-black uppercase tracking-[0.4em] mb-6">TAKMIČENJE EDITION</p>
         <div className="flex items-center justify-center gap-2">
-          <div className="w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s]"  style={{ background: '#facc15' }} />
+          <div className="w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s]" style={{ background: '#facc15' }} />
           <div className="w-2 h-2 rounded-full animate-bounce [animation-delay:-0.15s]" style={{ background: '#facc15' }} />
-          <div className="w-2 h-2 rounded-full animate-bounce"                            style={{ background: '#facc15' }} />
+          <div className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#facc15' }} />
         </div>
       </div>
     </div>
   );
 
-  if (!session) return <Login onLogin={() => {}} />;
+  if (!session) return <Login onLogin={() => { }} />;
 
   const renderTabShell = () => {
     switch (currentView) {
@@ -192,72 +192,67 @@ export default function BettingApp() {
 
   return (
     <div className="min-h-screen bg-black text-white pb-20 relative overflow-x-hidden">
-      
+
       <PullToRefresh onRefresh={handleRefresh}>
         <div className="w-full h-full">
           {renderTabShell()}
         </div>
       </PullToRefresh>
 
-      {/* ── NOVI ERGONOMSKI NAVIGACIONI BAR SA PROMIJENJENIM MJESTIMA ── */}
-      <div className="fixed bottom-0 left-0 right-0 pt-3 pb-[calc(env(safe-area-inset-bottom)+6px)] bg-[#05091a]/95 border-t border-white/10 backdrop-blur-xl flex justify-around items-center z-[999] shadow-[0_-8px_30px_rgba(0,0,0,0.6)] px-1">
-        
-        {/* 1. KRAJNJE LIJEVO: PROGNOZA (PROMIJENJENO MJESTO 🔁) */}
-        <button 
+      {/* ── YOUTUBE-STYLE BOTTOM NAVIGATION TAB BAR ── */}
+      <div className="fixed bottom-0 left-0 right-0 pt-2 pb-[calc(env(safe-area-inset-bottom)+10px)] bg-[#05091a]/90 border-t border-white/10 backdrop-blur-2xl flex justify-around items-center z-[999] shadow-[0_-12px_40px_rgba(0,0,0,0.8)] px-2">
+
+        {/* 1. KRAJNJE LIJEVO: PROGNOZA */}
+        <button
           onClick={() => navigateToView("predictor")}
-          className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${
-            currentView === "predictor" ? "text-yellow-400 font-black" : "text-white/40 font-bold"
-          }`}
+          className={`flex flex-col items-center justify-center flex-1 h-12 transition-all active:scale-90 ${currentView === "predictor" ? "text-yellow-400 font-black scale-105" : "text-white/40 font-bold"
+            }`}
         >
           <span className="text-xl mb-0.5">🔮</span>
           <span className="text-[9px] uppercase tracking-wider truncate">Prognoza</span>
         </button>
 
         {/* 2. LIJEVO CENTAR: MOJI PARI */}
-        <button 
+        <button
           onClick={handleMyPicksTabClick}
-          className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${
-            currentView === "tables" ? "text-yellow-400 font-black" : "text-white/40 font-bold"
-          }`}
+          className={`flex flex-col items-center justify-center flex-1 h-12 transition-all active:scale-90 ${currentView === "tables" ? "text-yellow-400 font-black scale-105" : "text-white/40 font-bold"
+            }`}
         >
           <span className="text-xl mb-0.5">📝</span>
           <span className="text-[9px] uppercase tracking-wider truncate">Tabele</span>
         </button>
 
         {/* 3. APSOLUTNI CENTAR: GLAVNI MENI */}
-        <button 
+        <button
           onClick={() => navigateToView("landing")}
-          className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${
-            currentView === "landing" ? "text-yellow-400 font-black" : "text-white/40 font-bold"
-          }`}
+          className={`flex flex-col items-center justify-center flex-1 h-12 transition-all active:scale-90 ${currentView === "landing" ? "text-yellow-400 font-black scale-105" : "text-white/40 font-bold"
+            }`}
         >
           <span className="text-xl mb-0.5">🏠</span>
           <span className="text-[9px] uppercase tracking-wider truncate">Meni</span>
         </button>
 
         {/* 4. DESNO CENTAR: PODIJUM */}
-        <button 
+        <button
           onClick={() => navigateToView("leaderboard")}
-          className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${
-            currentView === "leaderboard" ? "text-yellow-400 font-black" : "text-white/40 font-bold"
-          }`}
+          className={`flex flex-col items-center justify-center flex-1 h-12 transition-all active:scale-90 ${currentView === "leaderboard" ? "text-yellow-400 font-black scale-105" : "text-white/40 font-bold"
+            }`}
         >
           <span className="text-xl mb-0.5">🏆</span>
           <span className="text-[9px] uppercase tracking-wider truncate">Podijum</span>
         </button>
 
-        {/* 5. KRAJNJE DESNO: STATISTIKA (PROMIJENJENO MJESTO 🔁) */}
-        <button 
+        {/* 5. KRAJNJE DESNO: STATISTIKA */}
+        <button
           onClick={() => navigateToView("statistics")}
-          className={`flex flex-col items-center justify-center flex-1 h-full transition-all active:scale-90 ${
-            currentView === "statistics" ? "text-yellow-400 font-black" : "text-white/40 font-bold"
-          }`}
+          className={`flex flex-col items-center justify-center flex-1 h-12 transition-all active:scale-90 ${currentView === "statistics" ? "text-yellow-400 font-black scale-105" : "text-white/40 font-bold"
+            }`}
         >
           <span className="text-xl mb-0.5">📊</span>
           <span className="text-[9px] uppercase tracking-wider truncate">Statistika</span>
         </button>
 
-      </div>
+      </div> 
     </div>
   );
 }

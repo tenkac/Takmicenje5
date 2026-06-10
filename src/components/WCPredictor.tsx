@@ -9,11 +9,11 @@ interface Props {
 }
 
 const PLAYER_THEMES: Record<string, { icon: string }> = {
-  "Vlado":  { icon: "/Avatars/vlado.jpg" },
-  "Fika":   { icon: "/Avatars/fika.jpg" },
-  "Labud":  { icon: "/Avatars/labud.jpg" },
-  "Ilija":  { icon: "/Avatars/ilija.jpg" },
-  "Dzoni":  { icon: "/Avatars/dzoni.jpg" },
+  "Vlado":  { icon: "/Avatars/vlado.webp" },
+  "Fika":   { icon: "/Avatars/fika.webp" },
+  "Labud":  { icon: "/Avatars/labud.webp" },
+  "Ilija":  { icon: "/Avatars/ilija.webp" },
+  "Dzoni":  { icon: "/Avatars/dzoni.webp" },
 };
 
 const SP2026_DRZAVE = [
@@ -357,7 +357,7 @@ export default function WCPredictor({ activePlayer }: Props) {
                       <div className="flex items-center justify-between mb-8 pl-4 border-b border-white/10 pb-6">
                         <div className="flex items-center gap-4">
                           <div className="w-14 h-14 rounded-full border-2 border-yellow-400/30 overflow-hidden bg-gray-900 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
-                            <img src={PLAYER_THEMES[userData.player]?.icon || "/Avatars/default.jpg"} className="w-full h-full object-cover" alt={userData.player} />
+                            <img src={PLAYER_THEMES[userData.player]?.icon || "/Avatars/default.webp"} className="w-full h-full object-cover" alt={userData.player} />
                           </div>
                           <div>
                             <h3 className="text-2xl font-black uppercase text-white tracking-widest leading-none mb-1">{userData.player}</h3>
