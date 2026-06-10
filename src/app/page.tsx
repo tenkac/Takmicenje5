@@ -191,68 +191,89 @@ export default function BettingApp() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white pb-20 relative overflow-x-hidden">
-
+    <div className="min-h-screen bg-black text-white pb-20 md:pb-0 md:pl-60 relative overflow-x-hidden">
       <PullToRefresh onRefresh={handleRefresh}>
         <div className="w-full h-full">
           {renderTabShell()}
         </div>
       </PullToRefresh>
 
-      {/* ── YOUTUBE-STYLE BOTTOM NAVIGATION TAB BAR ── */}
-      <div className="fixed bottom-0 left-0 right-0 pt-2 pb-[calc(env(safe-area-inset-bottom)+20px)] bg-[#05091a]/90 border-t border-white/10 backdrop-blur-2xl flex justify-around items-center z-[999] shadow-[0_-12px_40px_rgba(0,0,0,0.8)] px-2">
+     {/* ── RESPONSIVE NAVIGATION BAR (MOBILE BOTTOM / DESKTOP SIDEBAR) ── */}
+      <div className="fixed bottom-0 left-0 right-0 pt-2 pb-[calc(env(safe-area-inset-bottom)+20px)] bg-[#05091a]/90 border-t border-white/10 backdrop-blur-2xl flex justify-around items-center z-[999] shadow-[0_-12px_40px_rgba(0,0,0,0.8)] px-2 w-full max-w-full overflow-hidden touch-none md:top-0 md:bottom-0 md:left-0 md:right-auto md:w-60 md:h-screen md:flex-col md:justify-start md:items-stretch md:pt-10 md:px-4 md:gap-2 md:border-t-0 md:border-r md:pb-8 md:shadow-[12px_0_40px_rgba(0,0,0,0.5)]">
 
-        {/* 1. KRAJNJE LIJEVO: PROGNOZA */}
+        {/* Desktop Sidebar Branding Header */}
+        <div className="hidden md:flex flex-col items-center mb-8 px-2 text-center border-b border-white/5 pb-6">
+          <span className="text-3xl mb-1.5 select-none animate-pulse">🏆</span>
+          <h2 className="text-sm font-black uppercase tracking-[0.25em] text-yellow-400">WC 2026</h2>
+          <span className="text-[9px] text-white/30 font-bold uppercase tracking-widest mt-0.5">Betting App</span>
+        </div>
+
+        {/* 1. PROGNOZA */}
         <button
           onClick={() => navigateToView("predictor")}
-          className={`flex flex-col items-center justify-center flex-1 h-12 transition-all active:scale-90 ${currentView === "predictor" ? "text-yellow-400 font-black scale-105" : "text-white/40 font-bold"
-            }`}
+          className={`flex flex-col items-center justify-center flex-1 min-w-0 h-12 transition-all active:scale-90 md:flex-row md:justify-start md:flex-initial md:h-12 md:px-4 md:rounded-xl md:active:scale-95 ${
+            currentView === "predictor" 
+              ? "text-yellow-400 font-black scale-105 md:scale-100 md:bg-yellow-400/[0.08] md:text-yellow-400" 
+              : "text-white/40 font-bold md:text-white/60 md:hover:bg-white/[0.03] md:hover:text-white"
+          }`}
         >
-          <span className="text-xl mb-0.5">🔮</span>
-          <span className="text-[9px] uppercase tracking-wider truncate">Prognoza</span>
+          <span className="text-xl mb-0.5 shrink-0 md:mb-0 md:text-lg">🔮</span>
+          <span className="text-[9px] uppercase tracking-wider truncate w-full text-center px-1 md:text-xs md:font-bold md:tracking-widest md:text-left md:px-0 md:ml-3.5">Prognoza</span>
         </button>
 
-        {/* 2. LIJEVO CENTAR: MOJI PARI */}
+        {/* 2. TABELE */}
         <button
           onClick={handleMyPicksTabClick}
-          className={`flex flex-col items-center justify-center flex-1 h-12 transition-all active:scale-90 ${currentView === "tables" ? "text-yellow-400 font-black scale-105" : "text-white/40 font-bold"
-            }`}
+          className={`flex flex-col items-center justify-center flex-1 min-w-0 h-12 transition-all active:scale-90 md:flex-row md:justify-start md:flex-initial md:h-12 md:px-4 md:rounded-xl md:active:scale-95 ${
+            currentView === "tables" 
+              ? "text-yellow-400 font-black scale-105 md:scale-100 md:bg-yellow-400/[0.08] md:text-yellow-400" 
+              : "text-white/40 font-bold md:text-white/60 md:hover:bg-white/[0.03] md:hover:text-white"
+          }`}
         >
-          <span className="text-xl mb-0.5">📝</span>
-          <span className="text-[9px] uppercase tracking-wider truncate">Tabele</span>
+          <span className="text-xl mb-0.5 shrink-0 md:mb-0 md:text-lg">📝</span>
+          <span className="text-[9px] uppercase tracking-wider truncate w-full text-center px-1 md:text-xs md:font-bold md:tracking-widest md:text-left md:px-0 md:ml-3.5">Tabele</span>
         </button>
 
-        {/* 3. APSOLUTNI CENTAR: GLAVNI MENI */}
+        {/* 3. MENI */}
         <button
           onClick={() => navigateToView("landing")}
-          className={`flex flex-col items-center justify-center flex-1 h-12 transition-all active:scale-90 ${currentView === "landing" ? "text-yellow-400 font-black scale-105" : "text-white/40 font-bold"
-            }`}
+          className={`flex flex-col items-center justify-center flex-1 min-w-0 h-12 transition-all active:scale-90 md:flex-row md:justify-start md:flex-initial md:h-12 md:px-4 md:rounded-xl md:active:scale-95 ${
+            currentView === "landing" 
+              ? "text-yellow-400 font-black scale-105 md:scale-100 md:bg-yellow-400/[0.08] md:text-yellow-400" 
+              : "text-white/40 font-bold md:text-white/60 md:hover:bg-white/[0.03] md:hover:text-white"
+          }`}
         >
-          <span className="text-xl mb-0.5">🏠</span>
-          <span className="text-[9px] uppercase tracking-wider truncate">Meni</span>
+          <span className="text-xl mb-0.5 shrink-0 md:mb-0 md:text-lg">🏠</span>
+          <span className="text-[9px] uppercase tracking-wider truncate w-full text-center px-1 md:text-xs md:font-bold md:tracking-widest md:text-left md:px-0 md:ml-3.5">Meni</span>
         </button>
 
-        {/* 4. DESNO CENTAR: PODIJUM */}
+        {/* 4. PODIJUM */}
         <button
           onClick={() => navigateToView("leaderboard")}
-          className={`flex flex-col items-center justify-center flex-1 h-12 transition-all active:scale-90 ${currentView === "leaderboard" ? "text-yellow-400 font-black scale-105" : "text-white/40 font-bold"
-            }`}
+          className={`flex flex-col items-center justify-center flex-1 min-w-0 h-12 transition-all active:scale-90 md:flex-row md:justify-start md:flex-initial md:h-12 md:px-4 md:rounded-xl md:active:scale-95 ${
+            currentView === "leaderboard" 
+              ? "text-yellow-400 font-black scale-105 md:scale-100 md:bg-yellow-400/[0.08] md:text-yellow-400" 
+              : "text-white/40 font-bold md:text-white/60 md:hover:bg-white/[0.03] md:hover:text-white"
+          }`}
         >
-          <span className="text-xl mb-0.5">🏆</span>
-          <span className="text-[9px] uppercase tracking-wider truncate">Podijum</span>
+          <span className="text-xl mb-0.5 shrink-0 md:mb-0 md:text-lg">🏆</span>
+          <span className="text-[9px] uppercase tracking-wider truncate w-full text-center px-1 md:text-xs md:font-bold md:tracking-widest md:text-left md:px-0 md:ml-3.5">Podijum</span>
         </button>
 
-        {/* 5. KRAJNJE DESNO: STATISTIKA */}
+        {/* 5. STATISTIKA */}
         <button
           onClick={() => navigateToView("statistics")}
-          className={`flex flex-col items-center justify-center flex-1 h-12 transition-all active:scale-90 ${currentView === "statistics" ? "text-yellow-400 font-black scale-105" : "text-white/40 font-bold"
-            }`}
+          className={`flex flex-col items-center justify-center flex-1 min-w-0 h-12 transition-all active:scale-90 md:flex-row md:justify-start md:flex-initial md:h-12 md:px-4 md:rounded-xl md:active:scale-95 ${
+            currentView === "statistics" 
+              ? "text-yellow-400 font-black scale-105 md:scale-100 md:bg-yellow-400/[0.08] md:text-yellow-400" 
+              : "text-white/40 font-bold md:text-white/60 md:hover:bg-white/[0.03] md:hover:text-white"
+          }`}
         >
-          <span className="text-xl mb-0.5">📊</span>
-          <span className="text-[9px] uppercase tracking-wider truncate">Statistika</span>
+          <span className="text-xl mb-0.5 shrink-0 md:mb-0 md:text-lg">📊</span>
+          <span className="text-[9px] uppercase tracking-wider truncate w-full text-center px-1 md:text-xs md:font-bold md:tracking-widest md:text-left md:px-0 md:ml-3.5">Statistika</span>
         </button>
 
-      </div> 
+      </div>
     </div>
   );
 }
