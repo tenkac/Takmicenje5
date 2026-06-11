@@ -22,6 +22,8 @@ export default function BettingApp() {
   });
   const [session, setSession] = useState<any>(null);
   const [appLoading, setAppLoading] = useState(true);
+  const lastFetched = useRef<number>(0);
+  const REFRESH_THRESHOLD = 900000; // 👈 15 minuta u milisekundama (900,000 ms)
 
   const viewHistory = useRef<AppView[]>(["landing"]);
 
@@ -29,6 +31,20 @@ export default function BettingApp() {
     if (currentView !== nextView) {
       viewHistory.current.push(currentView);
       setCurrentView(nextView);
+    }
+  };
+
+  const refreshIfStale = async () => {
+    const now = Date.now();
+    const timePassed = now - lastFetched.current;
+
+    console.log(`⏱️ Prošlo je ${Math.round(timePassed / 1000)}s od zadnjeg povlačenja.`);
+
+    if (timePassed > REFRESH_THRESHOLD) {
+      console.log("🚀 Podaci su stariji od 15 minuta! Pokrećem fetch ka Supabase bazi...");
+      await fetchBetsData();
+    } else {
+      console.log("🔒 Podaci su svježi. Koristim keširane parove iz memorije (0% troška baze).");
     }
   };
 
@@ -52,6 +68,9 @@ export default function BettingApp() {
         if (next[row.player_name] !== undefined) next[row.player_name] = row.bets || [];
       });
       setAllBets(next);
+
+      // Zapiši tačan timestamp kada su podaci stigli
+      lastFetched.current = Date.now();
     }
   };
 
@@ -134,9 +153,13 @@ export default function BettingApp() {
   return emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1).toLowerCase();
 };
 
-  const handleMyPicksTabClick = () => {
+  const handleMyPicksTabClick = async () => {
     const myName = getLoggedInPlayerName();
     setActivePlayer(myName);
+
+    // Provjeri starost podataka pre nego što otvoriš tabelu
+    await refreshIfStale();
+
     navigateToView("tables");
   };
 
