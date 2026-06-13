@@ -70,19 +70,19 @@ export default function LandingPage({ onNavigate }: Props) {
 
         {/* MASSIVE HERO CONTAINER */}
         <div className="wc-slide-up-2 text-center mb-8">
-          <div className="wc-gold-pulse text-[7.5rem] md:text-[11rem] leading-none mb-4 select-none filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.6)]">
+          <div className="wc-gold-pulse text-[7.5rem] md:text-[11rem] leading-none mb-8 select-none filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.6)]">
             🏆
           </div>
           <h1 className="font-black uppercase leading-none tracking-tight">
             <span className="block text-5xl md:text-8xl text-white tracking-wide mb-1" style={{ textShadow: '0 0 70px rgba(255,255,255,0.1)' }}>
-              WORLD CUP
+              TAKMIČENJE
             </span>
             <span className="wc-shine-text block text-7xl md:text-[10.5rem] tracking-tighter drop-shadow-[0_0_30px_rgba(250,204,21,0.2)]">
               2026
             </span>
           </h1>
           <p className="mt-4 text-white/30 text-sm font-black uppercase tracking-[0.6em] border-t border-b border-white/5 py-2 inline-block px-6">
-            TAKMIČENJE EDITION
+             WORLD CUP EDITION
           </p>
         </div>
 
@@ -122,7 +122,7 @@ export default function LandingPage({ onNavigate }: Props) {
               </div>
             </React.Fragment>
           ))}
-        </div>
+        </div>  
       </div>
 
       {/* ── SCOREBOARD TICKER ── */}

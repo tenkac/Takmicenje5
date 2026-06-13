@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 
 interface Props {
-  // onBack REMOVED NATIVELY FOR THE BOTTOM NAVBAR LIFECYCLE
   activePlayer: string;
 }
 
@@ -17,54 +16,7 @@ const PLAYER_THEMES: Record<string, { icon: string }> = {
 };
 
 const SP2026_DRZAVE = [
-  { name: "Alžir", emoji: "🇩🇿" },
-  { name: "Argentina", emoji: "🇦🇷" },
-  { name: "Australija", emoji: "🇦🇺" },
-  { name: "Austrija", emoji: "🇦🇹" },
-  { name: "Belgija", emoji: "🇧🇪" },
-  { name: "Bosna i Hercegovina", emoji: "🇧🇦" },
-  { name: "Brazil", emoji: "🇧🇷" },
-  { name: "Češka", emoji: "🇨🇿" },
-  { name: "DR Kongo", emoji: "🇨🇩" },
-  { name: "Egipat", emoji: "🇪🇬" },
-  { name: "Ekvador", emoji: "🇪🇨" },
-  { name: "Engleska", emoji: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
-  { name: "Francuska", emoji: "🇫🇷" },
-  { name: "Gana", emoji: "🇬🇭" },
-  { name: "Haiti", emoji: "🇭🇹" },
-  { name: "Holandija", emoji: "🇳🇱" },
-  { name: "Hrvatska", emoji: "🇭🇷" },
-  { name: "Irak", emoji: "🇮🇶" },
-  { name: "Iran", emoji: "🇮🇷" },
-  { name: "Japan", emoji: "🇯🇵" },
-  { name: "Jordan", emoji: "🇯🇴" },
-  { name: "Južna Afrika", emoji: "🇿🇦" },
-  { name: "Južna Koreja", emoji: "🇰🇷" },
-  { name: "Kanada", emoji: "🇨🇦" },
-  { name: "Katar", emoji: "🇶🇦" },
-  { name: "Kolumbija", emoji: "🇨🇴" },
-  { name: "Kurasao", emoji: "🇨🇼" },
-  { name: "Maroko", emoji: "🇲🇦" },
-  { name: "Meksiko", emoji: "🇲🇽" },
-  { name: "Njemačka", emoji: "🇩🇪" },
-  { name: "Norveška", emoji: "🇳🇴" },
-  { name: "Novi Zeland", emoji: "🇳🇿" },
-  { name: "Obala Slonovače", emoji: "🇨🇮" },
-  { name: "Panama", emoji: "🇵🇦" },
-  { name: "Paragvaj", emoji: "🇵🇾" },
-  { name: "Portugal", emoji: "🇵🇹" },
-  { name: "SAD", emoji: "🇺🇸" },
-  { name: "Saudijska Arabija", emoji: "🇸🇦" },
-  { name: "Senegal", emoji: "🇸🇳" },
-  { name: "Škotska", emoji: "🏴󠁧󠁢󠁳󠁣󠁴󠁿" },
-  { name: "Španija", emoji: "🇪🇸" },
-  { name: "Švedska", emoji: "🇸🇪" },
-  { name: "Švajcarska", emoji: "🇨🇭" },
-  { name: "Tunis", emoji: "🇹🇳" },
-  { name: "Turska", emoji: "🇹🇷" },
-  { name: "Urugvaj", emoji: "🇺🇾" },
-  { name: "Uzbekistan", emoji: "🇺🇿" },
-  { name: "Zelenortska Ostrva", emoji: "🇨🇻" }
+  { name: "Alžir", emoji: "🇩🇿" }, { name: "Argentina", emoji: "🇦🇷" }, { name: "Australija", emoji: "🇦🇺" }, { name: "Austrija", emoji: "🇦🇹" }, { name: "Belgija", emoji: "🇧🇪" }, { name: "Bosna i Hercegovina", emoji: "🇧🇦" }, { name: "Brazil", emoji: "🇧🇷" }, { name: "Češka", emoji: "🇨🇿" }, { name: "DR Kongo", emoji: "🇨🇩" }, { name: "Egipat", emoji: "🇪🇬" }, { name: "Ekvador", emoji: "🇪🇨" }, { name: "Engleska", emoji: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" }, { name: "Francuska", emoji: "🇫🇷" }, { name: "Gana", emoji: "🇬🇭" }, { name: "Haiti", emoji: "🇭🇹" }, { name: "Holandija", emoji: "🇳🇱" }, { name: "Hrvatska", emoji: "🇭🇷" }, { name: "Irak", emoji: "🇮🇶" }, { name: "Iran", emoji: "🇮🇷" }, { name: "Japan", emoji: "🇯🇵" }, { name: "Jordan", emoji: "🇯🇴" }, { name: "Južna Afrika", emoji: "🇿🇦" }, { name: "Južna Koreja", emoji: "🇰🇷" }, { name: "Kanada", emoji: "🇨🇦" }, { name: "Katar", emoji: "🇶🇦" }, { name: "Kolumbija", emoji: "🇨🇴" }, { name: "Kurasao", emoji: "🇨🇼" }, { name: "Maroko", emoji: "🇲🇦" }, { name: "Meksiko", emoji: "🇲🇽" }, { name: "Njemačka", emoji: "🇩🇪" }, { name: "Norveška", emoji: "🇳🇴" }, { name: "Novi Zeland", emoji: "🇳🇿" }, { name: "Obala Slonovače", emoji: "🇨🇮" }, { name: "Panama", emoji: "🇵🇦" }, { name: "Paragvaj", emoji: "🇵🇾" }, { name: "Portugal", emoji: "🇵🇹" }, { name: "SAD", emoji: "🇺🇸" }, { name: "Saudijska Arabija", emoji: "🇸🇦" }, { name: "Senegal", emoji: "🇸🇳" }, { name: "Škotska", emoji: "🏴󠁧󠁢󠁳󠁣󠁴󠁿" }, { name: "Španija", emoji: "🇪🇸" }, { name: "Švedska", emoji: "🇸🇪" }, { name: "Švajcarska", emoji: "🇨🇭" }, { name: "Tunis", emoji: "🇹🇳" }, { name: "Turska", emoji: "🇹🇷" }, { name: "Urugvaj", emoji: "🇺🇾" }, { name: "Uzbekistan", emoji: "🇺🇿" }, { name: "Zelenortska Ostrva", emoji: "🇨🇻" }
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 const INITIAL_GROUPS: Record<string, string[]> = {
@@ -81,6 +33,9 @@ const INITIAL_GROUPS: Record<string, string[]> = {
   K: ["🇵🇹 Portugal", "🇨🇩 DR Kongo", "🇺🇿 Uzbekistan", "🇨🇴 Kolumbija"],
   L: ["🏴󠁧󠁢󠁥󠁮󠁧󠁿 Engleska", "🇭🇷 Hrvatska", "🇬🇭 Gana", "🇵🇦 Panama"],
 };
+
+const CACHE_KEY = "wc_predictions_data";
+const CACHE_TTL_MS = 5 * 24 * 60 * 60 * 1000;
 
 export default function WCPredictor({ activePlayer }: Props) {
   const [viewMode, setViewMode] = useState<"edit" | "radar">("edit");
@@ -100,42 +55,71 @@ export default function WCPredictor({ activePlayer }: Props) {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const loadRadarData = async () => {
+  const fetchAllData = async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        try {
+          const parsedCache = JSON.parse(cached);
+          const timePassed = Date.now() - parsedCache.timestamp;
+          
+          if (timePassed < CACHE_TTL_MS) {
+            return parsedCache.data;
+          }
+        } catch (e) {
+          console.error("Greška pri čitanju keša:", e);
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('wc_predictions')
       .select('player, predictions');
 
-    if (data) setAllPlayersData(data);
     if (error) {
       console.error(error);
-      showToast("Greška pri učitavanju radara.", "error");
+      showToast("Greška pri učitavanju baze.", "error");
+      return null;
+    }
+
+    if (data) {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        timestamp: Date.now(),
+        data: data
+      }));
+      return data;
     }
   };
 
   useEffect(() => {
-    const fetchPredictions = async () => {
+    const initializePredictor = async () => {
       setIsLoading(true);
-      const { data } = await supabase
-        .from('wc_predictions')
-        .select('predictions')
-        .eq('player', activePlayer)
-        .maybeSingle();
+      const data = await fetchAllData();
 
-      if (!data || !data.predictions) {
-         setGroups(INITIAL_GROUPS); // Fallback ako nema podataka
-      } else {
-        setGroups(data.predictions.groups || INITIAL_GROUPS);
-        setSemis(data.predictions.semis || ["", "", "", ""]);
-        setWinner(data.predictions.winner || "");
-        setGoldenBoot(data.predictions.goldenBoot || "");
+      if (data) {
+        setAllPlayersData(data); 
+        
+        const myData = data.find((d: any) => d.player === activePlayer);
 
-        setHasSubmitted(true);
-        await loadRadarData();
-        setViewMode("radar");
+        if (!myData || !myData.predictions) {
+           setGroups(INITIAL_GROUPS); 
+           setHasSubmitted(false);
+           setViewMode("edit");
+        } else {
+          setGroups(myData.predictions.groups || INITIAL_GROUPS);
+          setSemis(myData.predictions.semis || ["", "", "", ""]);
+          setWinner(myData.predictions.winner || "");
+          setGoldenBoot(myData.predictions.goldenBoot || "");
+          setHasSubmitted(true);
+          setViewMode("radar");
+        }
       }
       setIsLoading(false);
     };
-    fetchPredictions();
+
+    if (activePlayer) {
+      initializePredictor();
+    }
   }, [activePlayer]);
 
   const handleReorder = (groupLetter: string, newOrder: string[]) => {
@@ -160,8 +144,13 @@ export default function WCPredictor({ activePlayer }: Props) {
       if (error) throw error;
 
       showToast("Prognoza uspešno sačuvana i zaključana!", "success");
+      
+      const freshData = await fetchAllData(true);
+      if (freshData) {
+        setAllPlayersData(freshData);
+      }
+      
       setHasSubmitted(true);
-      await loadRadarData();
       setViewMode("radar");
 
     } catch (error: any) {
@@ -184,7 +173,7 @@ export default function WCPredictor({ activePlayer }: Props) {
   }
 
   return (
-    <div
+     <div
       className="min-h-screen flex flex-col relative overflow-y-auto font-sans text-white pb-24"
       style={{ background: 'linear-gradient(165deg, #05091a 0%, #080d20 45%, #040810 100%)' }}
     >
@@ -223,7 +212,6 @@ export default function WCPredictor({ activePlayer }: Props) {
               transition={{ duration: 0.3 }}
               className="flex flex-col w-full"
             >
-              {/* CLEANED TITLE ZONE HEADER */}
               <div className="flex items-center justify-center mb-10 text-center w-full">
                 <div>
                   <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter text-yellow-400" style={{ textShadow: '0 0 20px rgba(250,204,21,0.3)' }}>WORLD CUP PREDICTOR</h1>
@@ -231,12 +219,17 @@ export default function WCPredictor({ activePlayer }: Props) {
                 </div>
               </div>
 
-              {/* FAZA PO GRUPAMA */}
               <div className="mb-12">
                 <h2 className="text-xl font-black uppercase tracking-widest mb-6 flex items-center gap-3">
                   <span className="text-2xl">📋</span> Faza po Grupama
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {/* 🛑 DODATO: e.stopPropagation() na edit grid-u da se zaštiti dragovanje od swajp menija */}
+                <div 
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                >
                   {Object.keys(groups).map((groupLetter) => (
                     <div key={groupLetter} className="p-4 rounded-2xl flex flex-col bg-white/5 border border-white/5">
                       <div className="text-center mb-4">
@@ -270,7 +263,6 @@ export default function WCPredictor({ activePlayer }: Props) {
                 </div>
               </div>
 
-              {/* ZAVRŠNICA */}
               <div className="mb-12">
                 <h2 className="text-xl font-black uppercase tracking-widest mb-6 flex items-center gap-3">
                   <span className="text-2xl">⚔️</span> Završnica
@@ -331,7 +323,6 @@ export default function WCPredictor({ activePlayer }: Props) {
             </motion.div>
           )}
 
-          {/* SVE PROGNOZE (RADAR VIEW) */}
           {viewMode === "radar" && (
             <motion.div
               key="radar"
@@ -341,7 +332,6 @@ export default function WCPredictor({ activePlayer }: Props) {
               transition={{ duration: 0.4 }}
               className="flex flex-col w-full pb-16"
             >
-              {/* CLEANED TITLE LOG ZAKLJUČANE PROGNOZE */}
               <div className="flex items-center justify-center mb-8 md:mb-12 text-center w-full">
                 <h1 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter text-white">
                   ZAKLJUČANE <span className="text-yellow-400">PROGNOZE</span>
@@ -358,7 +348,6 @@ export default function WCPredictor({ activePlayer }: Props) {
                     <div key={userData.player} className="bg-white/5 border border-white/10 p-4 sm:p-6 md:p-8 rounded-3xl md:rounded-[2rem] relative overflow-hidden backdrop-blur-sm shadow-lg">
                       <div className="absolute top-0 left-0 w-1.5 md:w-2 h-full bg-gradient-to-b from-yellow-400 to-yellow-600" />
 
-                      {/* HEADER CARD */}
                       <div className="flex items-center justify-between mb-5 md:mb-8 pl-3 md:pl-4 border-b border-white/10 pb-4 md:pb-6">
                         <div className="flex items-center gap-3 md:gap-4">
                           <div className="w-10 h-10 md:w-14 md:h-14 shrink-0 rounded-full border-2 border-yellow-400/30 overflow-hidden bg-gray-900 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
@@ -370,7 +359,6 @@ export default function WCPredictor({ activePlayer }: Props) {
                           </div>
                         </div>
 
-                        {/* DESKTOP STATS */}
                         <div className="hidden md:flex items-center gap-6">
                           <div className="text-right">
                             <span className="text-[10px] text-gray-400 uppercase font-black tracking-widest block mb-1">🏆 Šampion</span>
@@ -386,7 +374,6 @@ export default function WCPredictor({ activePlayer }: Props) {
 
                       <div className="space-y-5 md:space-y-6 pl-3 md:pl-0">
 
-                        {/* MOBILE STATS (WINNER / BOOT) */}
                         <div className="grid grid-cols-2 gap-3 md:hidden">
                           <div className="bg-black/40 p-3 sm:p-4 rounded-xl border border-white/5">
                             <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-black tracking-widest block mb-1">🏆 Šampion</span>
@@ -398,10 +385,8 @@ export default function WCPredictor({ activePlayer }: Props) {
                           </div>
                         </div>
 
-                        {/* SEMI FINALISTS */}
                         <div className="bg-black/40 p-4 md:p-5 rounded-xl md:rounded-2xl border border-white/5 md:pl-4">
                           <span className="text-[9px] md:text-[10px] text-gray-400 uppercase font-black tracking-widest block mb-3">⚔️ 4 Polufinalista</span>
-                          {/* 2x2 grid for mobile, flex wrap for desktop */}
                           <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 md:gap-3">
                             {userData.predictions.semis?.map((s: string, i: number) => (
                               <span key={i} className="text-[11px] md:text-xs font-bold bg-white/10 px-3 py-2 rounded-lg text-white border border-white/10 uppercase shadow-sm truncate text-center sm:text-left">{s || "?"}</span>
@@ -409,18 +394,19 @@ export default function WCPredictor({ activePlayer }: Props) {
                           </div>
                         </div>
 
-                        {/* GROUPS - FULLY RESPONSIVE (MOBILE SWIPE / DESKTOP GRID) */}
                         <div className="md:pl-4">
                           <span className="text-[10px] md:text-[11px] text-gray-400 uppercase font-black tracking-[0.2em] block mb-4">
                             📋 Kompletne Grupe
                           </span>
 
                           <div>
-                            {/* Container Architecture:
-                                - Mobile: Horizontal flex layout with swipe snapping, touch-pan-y, and overscroll-x-none
-                                - PC (md+): Switches to a crisp multi-column grid layout, restores default touch/overscroll behaviors
-                            */}
-                              <div className="flex overflow-x-auto pb-4 -mx-4 px-4 scroll-px-4 gap-3 snap-x snap-proximity scroll-smooth overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 md:mx-0 md:px-0 md:pb-0 md:overflow-x-visible md:overscroll-auto md:touch-auto">
+                              {/* 🛑 DODATO: e.stopPropagation() na karuselu da zaštiti od swajpanja tabova */}
+                              <div 
+                                className="swiper-no-swiping flex overflow-x-auto pb-4 -mx-4 px-4 scroll-px-4 gap-3 snap-x snap-proximity scroll-smooth overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 md:mx-0 md:px-0 md:pb-0 md:overflow-x-visible md:overscroll-auto md:touch-auto"
+                                onTouchStart={(e) => e.stopPropagation()}
+                                onTouchMove={(e) => e.stopPropagation()}
+                                onTouchEnd={(e) => e.stopPropagation()}
+                              >
                                 {Object.entries(userData.predictions.groups || {}).map(([gLetter, teams]) => (
                                 <div
                                     key={gLetter}
@@ -454,12 +440,10 @@ export default function WCPredictor({ activePlayer }: Props) {
                                 </div>
                               ))}
 
-                              {/* Invisible Spacer - Rendered only on mobile for visual end padding */}
                               <div className="flex-none w-1 h-full px-1 md:hidden" />
                             </div>
                           </div>
 
-                          {/* Visual Progress Hint - Only visible on Mobile */}
                           <div className="flex items-center justify-center gap-1.5 mt-2 md:hidden">
                             <div className="w-1 h-1 rounded-full bg-yellow-400/40" />
                             <div className="w-1 h-1 rounded-full bg-yellow-400/40" />
