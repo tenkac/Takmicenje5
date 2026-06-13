@@ -16,14 +16,13 @@ interface Comment {
   created_at: string;
 }
 
-// 👇 1. DICTIONARY MAPPING PLAYERS TO THEIR TAILWIND COLOR THEMING
 const COMMENT_PLAYER_COLORS: Record<string, string> = {
   "Vlado":  "text-blue-400",
   "Fika":   "text-red-400",
   "Labud":  "text-green-400",
   "Ilija":  "text-purple-400",
   "Dzoni":  "text-yellow-400",
-  "Admin":  "text-red-500 tracking-wider font-extrabold" // Custom safety styling for the admin account
+  "Admin":  "text-red-500 tracking-wider font-extrabold"
 };
 
 export default function MatchComments({ bettingRowId, matchKey, targetPlayer, loggedInPlayer }: CommentsProps) {
@@ -73,27 +72,46 @@ export default function MatchComments({ bettingRowId, matchKey, targetPlayer, lo
 
   return (
     <div className="mt-3 pt-3 border-t border-white/5 w-full">
-      {/* Comments List */}
-      <div className="space-y-2 max-h-40 overflow-y-auto mb-3 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      
+      {/* ── 1. DYNAMIC BADGE HEADER COUNTER ── */}
+      {comments.length > 0 && (
+        <div className="flex items-center gap-1.5 mb-2 px-1">
+          <span className="text-[9px] font-black tracking-widest text-white/30 uppercase">
+            Comments
+          </span>
+          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-yellow-400/80 scale-90 leading-none">
+            {comments.length}
+          </span>
+        </div>
+      )}
+
+      {/* ── 2. SCROLL COMPONENT WITH ULTRA-THIN STYLE & SMOOTH CSS MASK FADE ── */}
+      <div 
+        className="space-y-2 max-h-[145px] overflow-y-auto mb-3 pr-2 scroll-smooth select-none transition-all duration-300 [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-yellow-400/30"
+        style={{
+          maskImage: 'linear-gradient(to bottom, black 0%, black 82%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 82%, transparent 100%)'
+        }}
+      >
         {comments.length === 0 ? (
-          <p className="text-[10px] text-gray-500 italic uppercase tracking-wider pl-1">No comments yet. Call out his slip...</p>
+          <p className="text-[10px] text-gray-500 italic uppercase tracking-wider pl-1 py-1">
+            No comments yet. Call out his slip...
+          </p>
         ) : (
           comments.map(c => {
-            // 👇 2. RESOLVE DYNAMIC TAILWIND CLASS ACCORDING TO USERNAME
             const nameColorClass = COMMENT_PLAYER_COLORS[c.player_name] || "text-gray-400";
 
             return (
-              <div key={c.id} className="text-xs bg-white/[0.02] border border-white/5 p-2 rounded-xl">
+              <div key={c.id} className="text-xs bg-white/[0.01] border border-white/5 p-2 rounded-xl backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-0.5">
-                  {/* 👇 3. INJECT CUSTOM THEMED COLOR CLASS DIRECTLY HERE */}
                   <span className={`font-black uppercase text-[10px] tracking-wide ${nameColorClass}`}>
                     {c.player_name}
                   </span>
-                  <span className="text-[8px] text-gray-500">
+                  <span className="text-[8px] text-gray-500 font-mono">
                     {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
-                <p className="text-gray-300 font-medium text-[11px] leading-tight">{c.comment_text}</p>
+                <p className="text-gray-300 font-medium text-[11px] leading-tight break-words">{c.comment_text}</p>
               </div>
             );
           })
@@ -101,18 +119,18 @@ export default function MatchComments({ bettingRowId, matchKey, targetPlayer, lo
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleSubmitComment} className="flex gap-2 items-center">
+      <form onSubmit={handleSubmitComment} className="flex gap-2 items-center relative z-20">
         <input
           type="text"
           placeholder="Type a comment or roast..."
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
-          className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs font-medium text-white outline-none focus:border-yellow-400/50 placeholder:text-gray-600 transition-colors"
+          className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs font-medium text-white outline-none focus:border-yellow-400/50 placeholder:text-gray-600 transition-colors shadow-inner"
         />
         <button
           type="submit"
           disabled={loading || !newComment.trim()}
-          className="px-3 py-2 bg-yellow-400 text-black font-black text-xs uppercase tracking-wider rounded-xl hover:bg-yellow-300 active:scale-95 transition-all disabled:opacity-40"
+          className="px-3 py-2 bg-yellow-400 text-black font-black text-xs uppercase tracking-wider rounded-xl hover:bg-yellow-300 active:scale-95 transition-all disabled:opacity-40 disabled:scale-100"
         >
           {loading ? "..." : "💬"}
         </button>

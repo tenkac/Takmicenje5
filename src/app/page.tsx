@@ -22,13 +22,6 @@ export default function BettingApp() {
   });
   const [session, setSession] = useState<any>(null);
   const [appLoading, setAppLoading] = useState(true);
-  
-  // ── ⏱️ SWR PASIVNI TAJMERI ZA ZAŠTITU HOSTA ──
-  const lastFetched = useRef<number>(0);
-  const REFRESH_THRESHOLD = 900000; // 15 minuta za parove (900,000 ms)
-
-  const lastLeaderboardFetched = useRef<number>(0);
-  const LEADERBOARD_REFRESH_THRESHOLD = 600000; // 10 minuta za podijum (600,000 ms)
 
   const viewHistory = useRef<AppView[]>(["landing"]);
 
@@ -36,38 +29,6 @@ export default function BettingApp() {
     if (currentView !== nextView) {
       viewHistory.current.push(currentView);
       setCurrentView(nextView);
-    }
-  };
-
-  // Provjera za Tabele/Parove (15 min)
-  const refreshIfStale = async () => {
-    const now = Date.now();
-    const timePassed = now - lastFetched.current;
-
-    console.log(`静态 Prošlo je ${Math.round(timePassed / 1000)}s od zadnjeg povlačenja parova.`);
-
-    if (timePassed > REFRESH_THRESHOLD) {
-      console.log("🚀 Parovi su stariji od 15 minuta! Pokrećem fetch ka Supabase bazi...");
-      await fetchBetsData();
-    } else {
-      console.log("🔒 Parovi su svježi. Koristim keširane podatke iz memorije (0% troška baze).");
-    }
-  };
-
-  // 👇 NOVA FUNKCIJA: Provjera za Podijum/Leaderboard (10 min)
-  const refreshLeaderboardIfStale = async () => {
-    const now = Date.now();
-    const timePassed = now - lastLeaderboardFetched.current;
-
-    console.log(`🏆 Prošlo je ${Math.round(timePassed / 1000)}s od zadnjeg povlačenja tabele.`);
-
-    if (timePassed > LEADERBOARD_REFRESH_THRESHOLD) {
-      console.log("🚀 Tabela je starija od 10 minuta! Pokrećem osvježavanje bodova...");
-      await fetchBetsData();
-      // Vrijeme se automatski upisuje unutar fetchBetsData, ali ovdje eksplicitno osiguravamo i ovaj tajmer
-      lastLeaderboardFetched.current = Date.now();
-    } else {
-      console.log("🔒 Tabela je svježa. Koristim keširano stanje bodova (0% troška baze).");
     }
   };
 
@@ -91,11 +52,6 @@ export default function BettingApp() {
         if (next[row.player_name] !== undefined) next[row.player_name] = row.bets || [];
       });
       setAllBets(next);
-
-      // Zapiši tačan timestamp za oba tajmera jer fetch povlači sve podatke odjednom
-      const now = Date.now();
-      lastFetched.current = now;
-      lastLeaderboardFetched.current = now;
     }
   };
 
@@ -172,16 +128,17 @@ export default function BettingApp() {
     return emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1).toLowerCase();
   };
 
+  // 👇 INSTANT REFRESH TRIGGER FOR TABLES
   const handleMyPicksTabClick = async () => {
     const myName = getLoggedInPlayerName();
     setActivePlayer(myName);
-    await refreshIfStale();
+    await fetchBetsData();
     navigateToView("tables");
   };
 
-  // 👇 NOV HANDLER: Presreće klik na Podijum u navigaciji
+  // 👇 INSTANT REFRESH TRIGGER FOR LEADERBOARD
   const handleLeaderboardTabClick = async () => {
-    await refreshLeaderboardIfStale();
+    await fetchBetsData();
     navigateToView("leaderboard");
   };
 
