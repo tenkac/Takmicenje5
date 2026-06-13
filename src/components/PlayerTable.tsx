@@ -13,9 +13,10 @@ interface Props {
   setActivePlayer: (player: string) => void;
   onAddPick: (date: string, sport: string, matchName: string, tip: string, odds: number) => void;
   onToggleStatus: (date: string, matchKey: "match1" | "match2") => void;
-  // onBack REMOVED NATIVELY FOR THE BOTTOM NAVBAR Lifecycle
   userEmail?: string;
   onDeletePick?: (date: string, playerName: string, matchKey: "match1" | "match2") => void;
+  selectedDate: Date; // 👈 Passed down from the smart logic in BettingApp
+  setSelectedDate: (date: Date) => void; 
 }
 
 const PLAYER_THEMES: Record<string, { text: string, border: string, icon: string, hex: string }> = {
@@ -26,17 +27,55 @@ const PLAYER_THEMES: Record<string, { text: string, border: string, icon: string
   "Dzoni":  { text: "text-yellow-400", border: "border-yellow-500/50", icon: "/Avatars/dzoni.webp",  hex: "#eab308" },
 };
 
-export default function PlayerTable({ allBets, activePlayer, setActivePlayer, onAddPick, onToggleStatus, userEmail, onDeletePick }: Props) {
-  const [form, setForm] = useState({ date: new Date().toLocaleDateString('en-CA'), sport: "⚽", matchName: "", tip: "", odds: "" });
+export default function PlayerTable({ allBets, activePlayer, setActivePlayer, onAddPick, onToggleStatus, userEmail, onDeletePick, selectedDate, setSelectedDate }: Props) {
+  
+  // 1. Define both "actual today" and the "smart date"
+  const realTodayStr = new Date().toLocaleDateString('en-CA');
+  const activeDateStr = selectedDate.toLocaleDateString('en-CA');
+
+  const [form, setForm] = useState({ date: activeDateStr, sport: "⚽", matchName: "", tip: "", odds: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [flashMap, setFlashMap] = useState<Record<string, 'win' | 'loss' | null>>({});
   const [springMap, setSpringMap] = useState<Record<string, boolean>>({});
   const [mounted, setMounted] = useState(false);
   const [subTab, setSubTab] = useState<"individual" | "matchday">("individual");
 
-  // ADMIN INLINE EDITING STATE HOOKS
   const [editingCardKey, setEditingCardKey] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: "", tip: "", odds: "" });
+
+  // Sync the form date if the smart logic in the main app changes it
+  useEffect(() => {
+    const rows = allBets[activePlayer];
+    // Default fallback if they literally have 0 rows in the DB
+    let targetDate = new Date().toLocaleDateString('en-CA'); 
+
+    if (rows && rows.length > 0) {
+      // 1. Sort just to be absolutely sure we are looking at the chronologically LAST date they entered
+      const sortedRows = [...rows].sort((a, b) => a.date.localeCompare(b.date));
+      const lastRow = sortedRows[sortedRows.length - 1];
+
+      // 2. Check if their latest day is missing a pick
+      if (lastRow.match1.status === "empty" || lastRow.match2.status === "empty") {
+        targetDate = lastRow.date; // Stay on this day so they can finish it!
+      } else {
+        // 3. The day is full! Safely add 1 day to the string to move to tomorrow.
+        // We parse it manually and set it to Noon (12:00) so browser timezones don't shift it back a day
+        const [year, month, day] = lastRow.date.split('-').map(Number);
+        const nextDayObj = new Date(year, month - 1, day, 12, 0, 0); 
+        nextDayObj.setDate(nextDayObj.getDate() + 1);
+        
+        const nextYear = nextDayObj.getFullYear();
+        const nextMonth = String(nextDayObj.getMonth() + 1).padStart(2, '0');
+        const nextDay = String(nextDayObj.getDate()).padStart(2, '0');
+        
+        targetDate = `${nextYear}-${nextMonth}-${nextDay}`;
+      }
+    }
+
+    // Instantly update the form input
+    setForm(prev => ({ ...prev, date: targetDate }));
+    
+  }, [allBets, activePlayer]);
 
   useEffect(() => {
     setMounted(false);
@@ -48,7 +87,6 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
   }, [activePlayer, subTab]);
 
   const ADMIN_EMAIL = "vladoadmin@takmicenje.com";
-  const today = new Date().toLocaleDateString('en-CA');
   const isAdmin = userEmail === ADMIN_EMAIL;
 
   const loggedInPlayerName = React.useMemo(() => {
@@ -119,21 +157,12 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
         .ilike('player_name', cleanPlayerName) 
         .maybeSingle();
 
-      if (fetchErr || !data) {
-        throw new Error(`Korisnik "${cleanPlayerName}" nije pronađen u bazi podataka.`);
-      }
+      if (fetchErr || !data) throw new Error(`Korisnik "${cleanPlayerName}" nije pronađen u bazi podataka.`);
 
       const currentBetsArray = Array.isArray(data.bets) ? data.bets : [];
-
       const updatedBetsArray = currentBetsArray.map((ticket: any) => {
         if (ticket.date === date) {
-          return {
-            ...ticket,
-            [matchKey]: {
-              ...ticket[matchKey],
-              ...customValueObj
-            }
-          };
+          return { ...ticket, [matchKey]: { ...ticket[matchKey], ...customValueObj } };
         }
         return ticket;
       });
@@ -145,12 +174,10 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
         .select();
 
       if (updateErr) throw updateErr;
-      
       if (!updateCheck || updateCheck.length === 0) {
         alert("⚠️ Greška: Supabase nije uspeo da izvrši izmenu! Osveži stranicu pa pokušaj ponovo.");
         return;
       }
-      
       window.location.reload(); 
     } catch (err: any) {
       console.error(err);
@@ -174,11 +201,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
   const handleEditClick = (e: React.MouseEvent, date: string, matchKey: "match1" | "match2", matchObject: any) => {
     e.stopPropagation();
     setEditingCardKey(`${date}-${matchKey}`);
-    setEditForm({
-      name: matchObject.name,
-      tip: matchObject.tip,
-      odds: matchObject.odds.toString()
-    });
+    setEditForm({ name: matchObject.name, tip: matchObject.tip, odds: matchObject.odds.toString() });
   };
 
   const handleSaveEdit = async (e: React.FormEvent, date: string, matchKey: "match1" | "match2") => {
@@ -186,12 +209,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     const parsedOdds = parseFloat(editForm.odds);
     if (isNaN(parsedOdds) || parsedOdds <= 0) return alert("Unesite ispravnu kvotu!");
 
-    const editPayload = {
-      name: editForm.name,
-      tip: editForm.tip,
-      odds: parsedOdds
-    };
-
+    const editPayload = { name: editForm.name, tip: editForm.tip, odds: parsedOdds };
     await executeDirectDbUpdate(date, matchKey, editPayload);
     setEditingCardKey(null);
   };
@@ -199,7 +217,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
   const getStatusColor = (s: MatchStatus) => {
     if (s === "win")  return "bg-green-500/10 text-green-400 border-green-500/30";
     if (s === "loss") return "bg-red-500/10 text-red-400 border-red-500/30";
-    return "bg-orange-500/5 text-orange-300 border-orange-500/20";
+    return "bg-blue-500/10  text-blue-300 border-blue-500/20";
   };
 
   const getOddsRiskStyle = (odds: number) => {
@@ -219,13 +237,13 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     return { wins, pending, score: totalOdds.toFixed(2) };
   }, [allBets, activePlayer]);
 
-  // ── 📊 UPDATED TO STORE rowId SPECIFICALLY FOR THE COMMENTS MAPPING ──
+  // 2. 👇 The feed strictly uses `realTodayStr` so it always shows the actual current day
   const groupedMatchdayPicks = React.useMemo(() => {
     const groups: Record<string, any[]> = {};
     let totalCount = 0;
 
     PLAYERS.forEach(player => {
-      const todayRow = allBets[player]?.find(r => r.date === today);
+      const todayRow = allBets[player]?.find(r => r.date === realTodayStr);
       if (todayRow) {
         const picks: any[] = [];
         if (todayRow.match1.status !== 'empty') picks.push({ match: todayRow.match1, matchKey: 'match1', rowId: todayRow.id });
@@ -238,50 +256,30 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
       }
     });
     return { groups, totalCount };
-  }, [allBets, today]);
+  }, [allBets, realTodayStr]);
 
   const pt = PLAYER_THEMES[activePlayer] || { text: "text-white", border: "border-white/10", icon: "/Avatars/default.webp", hex: "#ffffff" };
 
   return (
     <>
       <style>{`
-        @keyframes stagger-in {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes card-spring {
-          0%   { transform: scale(1); }
-          28%  { transform: scale(0.95); }
-          65%  { transform: scale(1.03); }
-          100% { transform: scale(1); }
-        }
-        @keyframes flash-overlay {
-          0%   { opacity: 0; }
-          25%  { opacity: 0.3 }
-          100% { opacity: 0; }
-        }
-        @keyframes pending-glow {
-          0%, 100% { box-shadow: 0 0 0 rgba(249,115,22,0); border-color: rgba(249,115,22,0.15); }
-          50%       { box-shadow: 0 0 12px rgba(249,115,22,0.2); border-color: rgba(249,115,22,0.4); }
-        }
+        @keyframes stagger-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes card-spring { 0% { transform: scale(1); } 28% { transform: scale(0.95); } 65% { transform: scale(1.03); } 100% { transform: scale(1); } }
+        @keyframes flash-overlay { 0% { opacity: 0; } 25% { opacity: 0.3 } 100% { opacity: 0; } }
+        @keyframes pending-glow { 0%, 100% { box-shadow: 0 0 0 rgba(5, 86, 247, 0.2); border-color: rgba(5, 86, 247, 0.2); } 50% { box-shadow: 0 0 12px rgba(5, 86, 247, 0.2); border-color: rgba(5, 86, 247, 0.2); } }
         .spring-anim { animation: card-spring 0.38s cubic-bezier(0.36,0.07,0.19,0.97) both !important; }
         .pending-glow { animation: pending-glow 2s ease-in-out infinite; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      <div
-        className="min-h-screen text-white font-sans relative overflow-y-auto"
-        style={{ background: 'linear-gradient(165deg, #05091a 0%, #080d20 45%, #040810 100%)' }}
-      >
-        {/* Background Layers */}
+      <div className="min-h-screen text-white font-sans relative overflow-y-auto" style={{ background: 'linear-gradient(165deg, #05091a 0%, #080d20 45%, #040810 100%)' }}>
         <div className="fixed inset-0 wc-jersey-bg pointer-events-none" />
         <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
           <div className="wc-beam-l absolute" style={{ top: 0, left: '25%', width: '250px', height: '60vh', background: 'linear-gradient(178deg, rgba(250,204,21,0.12) 0%, transparent 80%)', filter: 'blur(50px)' }} />
           <div className="wc-beam-r absolute" style={{ top: 0, right: '25%', width: '250px', height: '60vh', background: 'linear-gradient(178deg, rgba(250,204,21,0.12) 0%, transparent 80%)', filter: 'blur(50px)' }} />
         </div>
 
-        {/* ── STICKY TOP BAR ── */}
         <div className="sticky top-0 z-50 backdrop-blur-md bg-[#05091a]/85 border-b border-white/5 px-4 py-4 flex flex-col gap-4">
           <div className="max-w-7xl w-full mx-auto flex flex-col items-center justify-center relative">
             <div className="text-center">
@@ -295,18 +293,11 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
             )}
           </div>
 
-          {/* SUB-TAB TOGGLE */}
           <div className="max-w-7xl w-full mx-auto grid grid-cols-2 bg-black/40 border border-white/5 p-1 rounded-xl">
-            <button 
-              onClick={() => setSubTab("individual")}
-              className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${subTab === "individual" ? "bg-white/10 text-white shadow-md" : "text-gray-500 hover:text-white"}`}
-            >
+            <button onClick={() => setSubTab("individual")} className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${subTab === "individual" ? "bg-white/10 text-white shadow-md" : "text-gray-500 hover:text-white"}`}>
               👤 PO PROFILIMA
             </button>
-            <button 
-              onClick={() => setSubTab("matchday")}
-              className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all relative ${subTab === "matchday" ? "bg-white/10 text-white shadow-md" : "text-gray-500 hover:text-white"}`}
-            >
+            <button onClick={() => setSubTab("matchday")} className={`py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all relative ${subTab === "matchday" ? "bg-white/10 text-white shadow-md" : "text-gray-500 hover:text-white"}`}>
               ⚡ SVI DANAS
               {groupedMatchdayPicks.totalCount > 0 && (
                 <span className="absolute top-1 right-2 bg-yellow-500 text-black font-black font-sans text-[8px] px-1.5 py-0.5 rounded-full leading-none">
@@ -316,32 +307,18 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
             </button>
           </div>
 
-          {/* HORIZONTAL CAROUSEL SELECTOR */}
           {subTab === "individual" && (
-            <div 
-              className="max-w-7xl w-full mx-auto flex gap-3 overflow-x-auto no-scrollbar py-1 px-4 -mx-4 scroll-smooth overscroll-contain touch-pan-x snap-x animate-[stagger-in_0.2s_ease-out]"
-              onTouchMove={(e) => e.stopPropagation()} 
-            >
+            <div className="max-w-7xl w-full mx-auto flex gap-3 overflow-x-auto no-scrollbar py-1 px-4 -mx-4 scroll-smooth overscroll-contain touch-pan-x snap-x animate-[stagger-in_0.2s_ease-out]" onTouchMove={(e) => e.stopPropagation()}>
               {PLAYERS.map(p => {
                 const isActive = activePlayer === p;
                 const theme = PLAYER_THEMES[p];
                 return (
-                  <button
-                    key={p}
-                    onClick={() => setActivePlayer(p)}
-                    className={`flex items-center gap-3 px-5 py-3 rounded-full border transition-all duration-300 relative shrink-0 snap-inline ${
-                      isActive 
-                        ? `${theme.border} bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] scale-100` 
-                        : 'border-white/5 bg-black/40 opacity-50 hover:opacity-100 active:scale-95'
-                    }`}
-                  >
+                  <button key={p} onClick={() => setActivePlayer(p)} className={`flex items-center gap-3 px-5 py-3 rounded-full border transition-all duration-300 relative shrink-0 snap-inline ${isActive ? `${theme.border} bg-white/10 shadow-[0_0_20px_rgba(255,255,255,0.08)] scale-100` : 'border-white/5 bg-black/40 opacity-50 hover:opacity-100 active:scale-95'}`}>
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20 relative pointer-events-none">
                       <img src={theme.icon} className="w-full h-full object-cover" alt={p} />
                     </div>
                     <span className="text-xs font-black uppercase tracking-widest pointer-events-none">{p}</span>
-                    {isActive && (
-                      <span className="w-2 h-2 rounded-full absolute -top-0.5 -right-0.5 animate-pulse" style={{ backgroundColor: theme.hex }} />
-                    )}
+                    {isActive && <span className="w-2 h-2 rounded-full absolute -top-0.5 -right-0.5 animate-pulse" style={{ backgroundColor: theme.hex }} />}
                   </button>
                 );
               })}
@@ -349,11 +326,8 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
           )}
         </div>
 
-        {/* ── MAIN LAYOUT HUB ── */}
         <div className="max-w-7xl mx-auto p-4 md:p-8 relative z-10">
           <AnimatePresence mode="wait">
-            
-            {/* ─────────────── TAB 1: INDIVIDUAL PROFILES ─────────────── */}
             {subTab === "individual" ? (
               <div key="individual" className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8">
                 <div className="flex flex-col gap-6 lg:sticky lg:top-[190px] lg:h-[calc(100vh-230px)]">
@@ -387,9 +361,19 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                   {isOwner && (
                     <div className="p-6 rounded-3xl bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-yellow-400/20 shadow-xl flex flex-col gap-3.5">
                       <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-400/70 flex items-center gap-2">⚽ UNESI NOVI PAR</h3>
+                      
                       <div className="flex flex-col gap-1.5">
-                        <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full h-[46px] bg-black/50 border border-white/10 rounded-xl px-3 text-xs text-white" />
+                        <input 
+                          type="date" 
+                          value={form.date} 
+                          onChange={e => {
+                            setForm({ ...form, date: e.target.value });
+                            setSelectedDate(new Date(e.target.value)); 
+                          }} 
+                          className="w-full h-[46px] bg-black/50 border border-white/10 rounded-xl px-3 text-xs text-white" 
+                        />
                       </div>
+                      
                       <div className="flex flex-col gap-1.5">
                         <input placeholder="Naziv meča" value={form.matchName} onChange={e => setForm({ ...form, matchName: e.target.value })} className="w-full h-[46px] bg-black/50 border border-white/10 rounded-xl px-4 text-xs text-white" />
                       </div>
@@ -411,8 +395,8 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                     </div>
                   ) : (
                     [...allBets[activePlayer]].reverse().map((row, rowIdx) => {
-                      const isToday = row.date === today;
-                      const isFuture = row.date > today;
+                      const isToday = row.date === realTodayStr;
+                      const isFuture = row.date > realTodayStr;
                       const isRowHidden = !isOwner && !hasUserUnlockedDate(row.date);
 
                       return (
@@ -440,11 +424,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                                 const isCurrentCardEditing = editingCardKey === currentCardId;
 
                                 return (
-                                  <div 
-                                    key={idx} 
-                                    onClick={() => isOwner && m.status !== 'empty' && handleToggle(row.date, activePlayer, mKey)} 
-                                    className={`p-4 rounded-xl border flex flex-col justify-between min-h-[92px] relative overflow-hidden transition-all ${getStatusColor(m.status)} ${isOwner && m.status !== 'empty' ? 'cursor-pointer hover:bg-white/[0.02]' : 'cursor-default'} ${m.status === 'pending' ? 'pending-glow' : ''} ${springMap[`${row.date}-${activePlayer}-${mKey}`] ? 'spring-anim' : ''}`}
-                                  >
+                                  <div key={idx} onClick={() => isOwner && m.status !== 'empty' && handleToggle(row.date, activePlayer, mKey)} className={`p-4 rounded-xl border flex flex-col justify-between min-h-[92px] relative overflow-hidden transition-all ${getStatusColor(m.status)} ${isOwner && m.status !== 'empty' ? 'cursor-pointer hover:bg-white/[0.02]' : 'cursor-default'} ${m.status === 'pending' ? 'pending-glow' : ''} ${springMap[`${row.date}-${activePlayer}-${mKey}`] ? 'spring-anim' : ''}`}>
                                     {flashMap[`${row.date}-${activePlayer}-${mKey}`] && <div className="absolute inset-0 pointer-events-none z-20" style={{ background: flashMap[`${row.date}-${activePlayer}-${mKey}`] === 'win' ? '#22c55e' : '#ef4444', animation: 'flash-overlay 0.5s ease-out both' }} />}
                                     
                                     {isCurrentCardEditing ? (
@@ -463,25 +443,12 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                                       <>
                                         <div className="flex justify-between items-start gap-2 mb-1 relative z-10">
                                           <span className="text-[8px] font-black text-white/40 uppercase">{m.sport || "⚽"} PAR {idx + 1}</span>
-                                          
                                           <div className="flex items-center gap-1.5 relative z-30">
                                             {m.status !== 'empty' && <span className={`font-black text-xs px-2 py-0.5 border rounded-md ${getOddsRiskStyle(m.odds)}`}>{m.odds.toFixed(2)}</span>}
-                                            
-                                            {/* ADMIN ACTION TOOLBOX PANEL */}
                                             {isAdmin && m.status !== 'empty' && (
                                               <div className="flex items-center gap-1">
-                                                <button 
-                                                  onClick={(e) => handleEditClick(e, row.date, mKey, m)}
-                                                  className="p-1 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500 hover:text-white transition-all text-[10px]"
-                                                >
-                                                  ✏️
-                                                </button>
-                                                <button 
-                                                  onClick={(e) => handleDeleteClick(e, row.date, mKey)}
-                                                  className="p-1 rounded bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white transition-all text-[10px]"
-                                                >
-                                                  🗑️
-                                                </button>
+                                                <button onClick={(e) => handleEditClick(e, row.date, mKey, m)} className="p-1 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500 hover:text-white transition-all text-[10px]">✏️</button>
+                                                <button onClick={(e) => handleDeleteClick(e, row.date, mKey)} className="p-1 rounded bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white transition-all text-[10px]">🗑️</button>
                                               </div>
                                             )}
                                           </div>
@@ -489,15 +456,9 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                                         <div className="my-1.5 text-xs font-black truncate uppercase text-white">{m.name || "---"}</div>
                                         <div className="text-[9px] font-black uppercase text-white/40">TIP: <span className="text-white">{m.tip || "---"}</span></div>
                                         
-                                        {/* 👇 COMMENT COMPONENT INSERTION FOR INDIVIDUAL PROFILES TAB ── */}
                                         {m.status !== 'empty' && (
                                           <div onClick={(e) => e.stopPropagation()} className="w-full mt-2 relative z-30">
-                                            <MatchComments 
-                                              bettingRowId={row.id}
-                                              matchKey={mKey}
-                                              targetPlayer={activePlayer}
-                                              loggedInPlayer={loggedInPlayerName || "Admin"}
-                                            />
+                                            <MatchComments bettingRowId={row.id} matchKey={mKey} targetPlayer={activePlayer} loggedInPlayer={loggedInPlayerName || "Admin"} />
                                           </div>
                                         )}
                                       </>
@@ -518,7 +479,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
               /* ─────────────── TAB 2: GROUPED LIVE MATCHDAY FEED ─────────────── */
               <div key="matchday" className="max-w-3xl mx-auto space-y-6 animate-[stagger-in_0.3s_ease-out]">
                 <div className="space-y-6">
-                  {!hasUserUnlockedDate(today) ? (
+                  {!hasUserUnlockedDate(realTodayStr) ? ( // 👈 Checking actual today
                     <div className="p-12 text-center rounded-3xl bg-black/40 border border-white/5 flex flex-col items-center justify-center py-16 gap-3 border-dashed">
                       <span className="text-3xl">🔒</span>
                       <h3 className="text-sm font-black text-gray-300 uppercase tracking-wider">Pregled je zaključan!</h3>
@@ -571,7 +532,6 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                                     TIP: <span className="text-white font-bold">{item.match.tip}</span>
                                   </div>
 
-                                  {/* 👇 COMMENT COMPONENT INSERTION FOR GROUPED FEED TAB ── */}
                                   <div onClick={(e) => e.stopPropagation()} className="w-full mt-3 relative z-30">
                                     <MatchComments 
                                       bettingRowId={item.rowId}
@@ -594,7 +554,6 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
           </AnimatePresence>
         </div>
 
-        {/* FOOTER TICKER */}
         <div className="w-full overflow-hidden py-2 mt-8 mb-16" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.3)' }}>
           <div className="wc-ticker whitespace-nowrap inline-block">
             {[0, 1].map(i => (
