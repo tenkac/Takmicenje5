@@ -82,6 +82,11 @@ const INITIAL_GROUPS: Record<string, string[]> = {
   L: ["🏴󠁧󠁢󠁥󠁮󠁧󠁿 Engleska", "🇭🇷 Hrvatska", "🇬🇭 Gana", "🇵🇦 Panama"],
 };
 
+
+
+const CACHE_KEY = 'wc_predictions_cache_v1';
+const CACHE_TTL = 5 * 24 * 60 * 60 * 1000; // 5 days in milliseconds
+
 export default function WCPredictor({ activePlayer }: Props) {
   const [viewMode, setViewMode] = useState<"edit" | "radar">("edit");
   const [groups, setGroups] = useState(INITIAL_GROUPS);
@@ -100,42 +105,71 @@ export default function WCPredictor({ activePlayer }: Props) {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const loadRadarData = async () => {
+  // 1. SMART FETCH WITH LOCALSTORAGE TTL
+  const fetchWithCache = async () => {
+    const cached = localStorage.getItem(CACHE_KEY);
+    
+    if (cached) {
+      try {
+        const { timestamp, data } = JSON.parse(cached);
+        // If cache is younger than 5 days, return it
+        if (Date.now() - timestamp < CACHE_TTL) {
+          return data;
+        }
+      } catch (e) {
+        console.error("Cache parsing failed, fetching fresh data.");
+      }
+    }
+
+    // 2. FRESH DB PULL (Only happens every 5 days, or on hard cache wipe)
     const { data, error } = await supabase
       .from('wc_predictions')
       .select('player, predictions');
 
-    if (data) setAllPlayersData(data);
     if (error) {
       console.error(error);
-      showToast("Greška pri učitavanju radara.", "error");
+      showToast("Greška pri učitavanju baze.", "error");
+      return null;
     }
+
+    // 3. SERIALIZE AND SAVE
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      timestamp: Date.now(),
+      data: data
+    }));
+
+    return data;
   };
 
   useEffect(() => {
-    const fetchPredictions = async () => {
+    const initializePredictor = async () => {
       setIsLoading(true);
-      const { data } = await supabase
-        .from('wc_predictions')
-        .select('predictions')
-        .eq('player', activePlayer)
-        .maybeSingle();
+      
+      const data = await fetchWithCache();
+      
+      if (data) {
+        setAllPlayersData(data);
+        
+        // Extract active player directly from the master array (0 DB hits)
+        const myData = data.find((row: any) => row.player === activePlayer);
+        
+        if (!myData || !myData.predictions) {
+           setGroups(INITIAL_GROUPS);
+        } else {
+          setGroups(myData.predictions.groups || INITIAL_GROUPS);
+          setSemis(myData.predictions.semis || ["", "", "", ""]);
+          setWinner(myData.predictions.winner || "");
+          setGoldenBoot(myData.predictions.goldenBoot || "");
 
-      if (!data || !data.predictions) {
-         setGroups(INITIAL_GROUPS); // Fallback ako nema podataka
-      } else {
-        setGroups(data.predictions.groups || INITIAL_GROUPS);
-        setSemis(data.predictions.semis || ["", "", "", ""]);
-        setWinner(data.predictions.winner || "");
-        setGoldenBoot(data.predictions.goldenBoot || "");
-
-        setHasSubmitted(true);
-        await loadRadarData();
-        setViewMode("radar");
+          setHasSubmitted(true);
+          setViewMode("radar");
+        }
       }
+      
       setIsLoading(false);
     };
-    fetchPredictions();
+
+    initializePredictor();
   }, [activePlayer]);
 
   const handleReorder = (groupLetter: string, newOrder: string[]) => {
@@ -160,8 +194,15 @@ export default function WCPredictor({ activePlayer }: Props) {
       if (error) throw error;
 
       showToast("Prognoza uspešno sačuvana i zaključana!", "success");
+      
+      // CACHE INVALIDATION: Wipe the local cache to force a fresh pull of the new data
+      localStorage.removeItem(CACHE_KEY);
+      
+      // Pull fresh data immediately so the Radar view updates
+      const freshData = await fetchWithCache();
+      if (freshData) setAllPlayersData(freshData);
+      
       setHasSubmitted(true);
-      await loadRadarData();
       setViewMode("radar");
 
     } catch (error: any) {
@@ -171,17 +212,6 @@ export default function WCPredictor({ activePlayer }: Props) {
       setIsSubmitting(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#05091a]">
-        <div className="text-yellow-400 font-black tracking-widest uppercase animate-pulse flex flex-col items-center gap-4">
-          <span className="text-4xl">⚽</span>
-          Učitavanje baze...
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div

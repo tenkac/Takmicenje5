@@ -22,8 +22,13 @@ export default function BettingApp() {
   });
   const [session, setSession] = useState<any>(null);
   const [appLoading, setAppLoading] = useState(true);
+  
+  // ── ⏱️ SWR PASIVNI TAJMERI ZA ZAŠTITU HOSTA ──
   const lastFetched = useRef<number>(0);
-  const REFRESH_THRESHOLD = 900000; // 👈 15 minuta u milisekundama (900,000 ms)
+  const REFRESH_THRESHOLD = 900000; // 15 minuta za parove (900,000 ms)
+
+  const lastLeaderboardFetched = useRef<number>(0);
+  const LEADERBOARD_REFRESH_THRESHOLD = 600000; // 10 minuta za podijum (600,000 ms)
 
   const viewHistory = useRef<AppView[]>(["landing"]);
 
@@ -34,17 +39,35 @@ export default function BettingApp() {
     }
   };
 
+  // Provjera za Tabele/Parove (15 min)
   const refreshIfStale = async () => {
     const now = Date.now();
     const timePassed = now - lastFetched.current;
 
-    console.log(`⏱️ Prošlo je ${Math.round(timePassed / 1000)}s od zadnjeg povlačenja.`);
+    console.log(`静态 Prošlo je ${Math.round(timePassed / 1000)}s od zadnjeg povlačenja parova.`);
 
     if (timePassed > REFRESH_THRESHOLD) {
-      console.log("🚀 Podaci su stariji od 15 minuta! Pokrećem fetch ka Supabase bazi...");
+      console.log("🚀 Parovi su stariji od 15 minuta! Pokrećem fetch ka Supabase bazi...");
       await fetchBetsData();
     } else {
-      console.log("🔒 Podaci su svježi. Koristim keširane parove iz memorije (0% troška baze).");
+      console.log("🔒 Parovi su svježi. Koristim keširane podatke iz memorije (0% troška baze).");
+    }
+  };
+
+  // 👇 NOVA FUNKCIJA: Provjera za Podijum/Leaderboard (10 min)
+  const refreshLeaderboardIfStale = async () => {
+    const now = Date.now();
+    const timePassed = now - lastLeaderboardFetched.current;
+
+    console.log(`🏆 Prošlo je ${Math.round(timePassed / 1000)}s od zadnjeg povlačenja tabele.`);
+
+    if (timePassed > LEADERBOARD_REFRESH_THRESHOLD) {
+      console.log("🚀 Tabela je starija od 10 minuta! Pokrećem osvježavanje bodova...");
+      await fetchBetsData();
+      // Vrijeme se automatski upisuje unutar fetchBetsData, ali ovdje eksplicitno osiguravamo i ovaj tajmer
+      lastLeaderboardFetched.current = Date.now();
+    } else {
+      console.log("🔒 Tabela je svježa. Koristim keširano stanje bodova (0% troška baze).");
     }
   };
 
@@ -69,8 +92,10 @@ export default function BettingApp() {
       });
       setAllBets(next);
 
-      // Zapiši tačan timestamp kada su podaci stigli
-      lastFetched.current = Date.now();
+      // Zapiši tačan timestamp za oba tajmera jer fetch povlači sve podatke odjednom
+      const now = Date.now();
+      lastFetched.current = now;
+      lastLeaderboardFetched.current = now;
     }
   };
 
@@ -139,28 +164,25 @@ export default function BettingApp() {
   };
 
   const getLoggedInPlayerName = () => {
-  if (!session?.user?.email) return "Vlado";
-  
-  // Pretvaramo email u osnovni string (npr "vladoadmin" ili "fika")
-  const emailPrefix = session.user.email.split('@')[0].toLowerCase();
-  
-  // 👇 LOGIKA: Ako je vladoadmin, vrati "Vlado"
-  if (emailPrefix === "vladoadmin") {
-    return "Vlado";
-  }
-  
-  // Inače, formatiraj ime kao i do sada
-  return emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1).toLowerCase();
-};
+    if (!session?.user?.email) return "Vlado";
+    const emailPrefix = session.user.email.split('@')[0].toLowerCase();
+    if (emailPrefix === "vladoadmin") {
+      return "Vlado";
+    }
+    return emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1).toLowerCase();
+  };
 
   const handleMyPicksTabClick = async () => {
     const myName = getLoggedInPlayerName();
     setActivePlayer(myName);
-
-    // Provjeri starost podataka pre nego što otvoriš tabelu
     await refreshIfStale();
-
     navigateToView("tables");
+  };
+
+  // 👇 NOV HANDLER: Presreće klik na Podijum u navigaciji
+  const handleLeaderboardTabClick = async () => {
+    await refreshLeaderboardIfStale();
+    navigateToView("leaderboard");
   };
 
   // ── LOADING SCREEN ───────────────────────────────────────────────────────────
@@ -205,7 +227,6 @@ export default function BettingApp() {
       case "statistics":
         return <Statistics allBets={allBets} onBack={navigateBack} />;
       case "predictor":
-        // ✅ PROGNOZA FIX: Ovdje prosljeđujemo tačno izračunato ime ulogovanog korisnika iz baze
         return <WCPredictor activePlayer={getLoggedInPlayerName()} />;
       case "tables":
       default:
@@ -281,7 +302,7 @@ export default function BettingApp() {
 
         {/* 4. PODIJUM */}
         <button
-          onClick={() => navigateToView("leaderboard")}
+          onClick={handleLeaderboardTabClick}
           className={`flex flex-col items-center justify-center flex-1 min-w-0 h-12 transition-all active:scale-90 md:flex-row md:justify-start md:flex-initial md:h-12 md:px-4 md:rounded-xl md:active:scale-95 ${
             currentView === "leaderboard" 
               ? "text-yellow-400 font-black scale-105 md:scale-100 md:bg-yellow-400/[0.08] md:text-yellow-400" 
