@@ -85,17 +85,13 @@ export default function MatchComments({ bettingRowId, matchKey, targetPlayer, lo
         </div>
       )}
 
-      {/* ── 2. SCROLL COMPONENT WITH ULTRA-THIN STYLE & SMOOTH CSS MASK FADE ── */}
+      {/* ── 2. SCROLL COMPONENT (Mask Fade Removed) ── */}
       <div 
         className="space-y-2 max-h-[145px] overflow-y-auto mb-3 pr-2 scroll-smooth select-none transition-all duration-300 [&::-webkit-scrollbar]:w-[3px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-yellow-400/30"
-        style={{
-          maskImage: 'linear-gradient(to bottom, black 0%, black 82%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 82%, transparent 100%)'
-        }}
       >
         {comments.length === 0 ? (
           <p className="text-[10px] text-gray-500 italic uppercase tracking-wider pl-1 py-1">
-            No comments yet. Call out his slip...
+            Nema komentara, isprozivaj budalu...
           </p>
         ) : (
           comments.map(c => {
