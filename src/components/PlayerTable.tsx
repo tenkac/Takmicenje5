@@ -3,8 +3,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { AllPlayersData, PLAYERS, MatchStatus } from '../types';
 import { betSchema } from '../utils/validation';
 import { motion, AnimatePresence } from 'framer-motion';
-// 👇 IMPORT SUPABASE INSTANCE
 import { supabase } from '../lib/supabase';
+// 👇 IMPORT THE NEW MATCH COMMENTS COMPONENT
+import MatchComments from './MatchComments';
 
 interface Props {
   allBets: AllPlayersData;
@@ -218,6 +219,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     return { wins, pending, score: totalOdds.toFixed(2) };
   }, [allBets, activePlayer]);
 
+  // ── 📊 UPDATED TO STORE rowId SPECIFICALLY FOR THE COMMENTS MAPPING ──
   const groupedMatchdayPicks = React.useMemo(() => {
     const groups: Record<string, any[]> = {};
     let totalCount = 0;
@@ -226,8 +228,8 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
       const todayRow = allBets[player]?.find(r => r.date === today);
       if (todayRow) {
         const picks: any[] = [];
-        if (todayRow.match1.status !== 'empty') picks.push({ match: todayRow.match1, matchKey: 'match1' });
-        if (todayRow.match2.status !== 'empty') picks.push({ match: todayRow.match2, matchKey: 'match2' });
+        if (todayRow.match1.status !== 'empty') picks.push({ match: todayRow.match1, matchKey: 'match1', rowId: todayRow.id });
+        if (todayRow.match2.status !== 'empty') picks.push({ match: todayRow.match2, matchKey: 'match2', rowId: todayRow.id });
         
         if (picks.length > 0) {
           groups[player] = picks;
@@ -279,7 +281,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
           <div className="wc-beam-r absolute" style={{ top: 0, right: '25%', width: '250px', height: '60vh', background: 'linear-gradient(178deg, rgba(250,204,21,0.12) 0%, transparent 80%)', filter: 'blur(50px)' }} />
         </div>
 
-        {/* ── STICKY TOP BAR (CLEANED OF NAVIGATION ARTIFACTS) ── */}
+        {/* ── STICKY TOP BAR ── */}
         <div className="sticky top-0 z-50 backdrop-blur-md bg-[#05091a]/85 border-b border-white/5 px-4 py-4 flex flex-col gap-4">
           <div className="max-w-7xl w-full mx-auto flex flex-col items-center justify-center relative">
             <div className="text-center">
@@ -403,7 +405,6 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                 </div>
 
                 <div className="space-y-4">
-                  {/* 👇 Sigurnosna provjera ovdje */}
                   {(!allBets[activePlayer] || allBets[activePlayer].length === 0) ? (
                     <div className="p-12 text-center text-xs font-black uppercase tracking-widest text-gray-600 bg-white/5 border border-white/5 rounded-3xl">
                       {activePlayer} trenutno nema unesenih parova.
@@ -487,6 +488,18 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                                         </div>
                                         <div className="my-1.5 text-xs font-black truncate uppercase text-white">{m.name || "---"}</div>
                                         <div className="text-[9px] font-black uppercase text-white/40">TIP: <span className="text-white">{m.tip || "---"}</span></div>
+                                        
+                                        {/* 👇 COMMENT COMPONENT INSERTION FOR INDIVIDUAL PROFILES TAB ── */}
+                                        {m.status !== 'empty' && (
+                                          <div onClick={(e) => e.stopPropagation()} className="w-full mt-2 relative z-30">
+                                            <MatchComments 
+                                              bettingRowId={row.id}
+                                              matchKey={mKey}
+                                              targetPlayer={activePlayer}
+                                              loggedInPlayer={loggedInPlayerName || "Admin"}
+                                            />
+                                          </div>
+                                        )}
                                       </>
                                     )}
                                   </div>
@@ -539,7 +552,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                               return (
                                 <div 
                                   key={idx}
-                                  className={`p-4 rounded-xl border bg-black/40 relative overflow-hidden flex flex-col justify-between min-h-[92px] transition-all cursor-default ${getStatusColor(item.match.status)} ${item.match.status === 'pending' ? 'pending-glow' : ''}`}
+                                  className={`p-4 rounded-xl border border-white/5 bg-black/40 relative overflow-hidden flex flex-col justify-between min-h-[92px] transition-all cursor-default ${getStatusColor(item.match.status)} ${item.match.status === 'pending' ? 'pending-glow' : ''}`}
                                 >
                                   <div className="flex justify-between items-start gap-2 mb-1">
                                     <span className="text-[8px] font-black text-white/40 uppercase">
@@ -556,6 +569,16 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
 
                                   <div className="text-[9px] font-black uppercase tracking-widest text-white/40">
                                     TIP: <span className="text-white font-bold">{item.match.tip}</span>
+                                  </div>
+
+                                  {/* 👇 COMMENT COMPONENT INSERTION FOR GROUPED FEED TAB ── */}
+                                  <div onClick={(e) => e.stopPropagation()} className="w-full mt-3 relative z-30">
+                                    <MatchComments 
+                                      bettingRowId={item.rowId}
+                                      matchKey={item.matchKey}
+                                      targetPlayer={player}
+                                      loggedInPlayer={loggedInPlayerName || "Admin"}
+                                    />
                                   </div>
                                 </div>
                               );

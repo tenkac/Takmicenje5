@@ -16,6 +16,16 @@ interface Comment {
   created_at: string;
 }
 
+// 👇 1. DICTIONARY MAPPING PLAYERS TO THEIR TAILWIND COLOR THEMING
+const COMMENT_PLAYER_COLORS: Record<string, string> = {
+  "Vlado":  "text-blue-400",
+  "Fika":   "text-red-400",
+  "Labud":  "text-green-400",
+  "Ilija":  "text-purple-400",
+  "Dzoni":  "text-yellow-400",
+  "Admin":  "text-red-500 tracking-wider font-extrabold" // Custom safety styling for the admin account
+};
+
 export default function MatchComments({ bettingRowId, matchKey, targetPlayer, loggedInPlayer }: CommentsProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -68,17 +78,25 @@ export default function MatchComments({ bettingRowId, matchKey, targetPlayer, lo
         {comments.length === 0 ? (
           <p className="text-[10px] text-gray-500 italic uppercase tracking-wider pl-1">No comments yet. Call out his slip...</p>
         ) : (
-          comments.map(c => (
-            <div key={c.id} className="text-xs bg-white/[0.02] border border-white/5 p-2 rounded-xl">
-              <div className="flex items-center justify-between mb-0.5">
-                <span className="font-black text-yellow-400 uppercase text-[10px] tracking-wide">{c.player_name}</span>
-                <span className="text-[8px] text-gray-500">
-                  {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+          comments.map(c => {
+            // 👇 2. RESOLVE DYNAMIC TAILWIND CLASS ACCORDING TO USERNAME
+            const nameColorClass = COMMENT_PLAYER_COLORS[c.player_name] || "text-gray-400";
+
+            return (
+              <div key={c.id} className="text-xs bg-white/[0.02] border border-white/5 p-2 rounded-xl">
+                <div className="flex items-center justify-between mb-0.5">
+                  {/* 👇 3. INJECT CUSTOM THEMED COLOR CLASS DIRECTLY HERE */}
+                  <span className={`font-black uppercase text-[10px] tracking-wide ${nameColorClass}`}>
+                    {c.player_name}
+                  </span>
+                  <span className="text-[8px] text-gray-500">
+                    {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <p className="text-gray-300 font-medium text-[11px] leading-tight">{c.comment_text}</p>
               </div>
-              <p className="text-gray-300 font-medium text-[11px] leading-tight">{c.comment_text}</p>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
