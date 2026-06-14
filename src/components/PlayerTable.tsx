@@ -394,7 +394,11 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                       {activePlayer} trenutno nema unesenih parova.
                     </div>
                   ) : (
-                    [...allBets[activePlayer]].reverse().map((row, rowIdx) => {
+                    [...allBets[activePlayer]]
+                      .sort((a, b) => a.date.localeCompare(b.date))
+                      .reverse()
+                      .slice(0, 5) // 👈 HERE IS THE SLICE TO ONLY SHOW THE LATEST 5 DAYS
+                      .map((row, rowIdx) => {
                       const isToday = row.date === realTodayStr;
                       const isFuture = row.date > realTodayStr;
                       const isRowHidden = !isOwner && !hasUserUnlockedDate(row.date);
