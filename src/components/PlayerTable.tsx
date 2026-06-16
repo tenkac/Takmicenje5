@@ -4,8 +4,8 @@ import { AllPlayersData, PLAYERS, MatchStatus } from '../types';
 import { betSchema } from '../utils/validation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-// 👇 IMPORT THE NEW MATCH COMMENTS COMPONENT
 import MatchComments from './MatchComments';
+import ReactionButtons from './ReactionButtons'; // 👈 Imported our likes/dislikes panel
 
 interface Props {
   allBets: AllPlayersData;
@@ -397,7 +397,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                     [...allBets[activePlayer]]
                       .sort((a, b) => a.date.localeCompare(b.date))
                       .reverse()
-                      .slice(0, 5) // 👈 HERE IS THE SLICE TO ONLY SHOW THE LATEST 5 DAYS
+                      .slice(0, 5) 
                       .map((row, rowIdx) => {
                       const isToday = row.date === realTodayStr;
                       const isFuture = row.date > realTodayStr;
@@ -446,7 +446,14 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                                     ) : (
                                       <>
                                         <div className="flex justify-between items-start gap-2 mb-1 relative z-10">
-                                          <span className="text-[8px] font-black text-white/40 uppercase">{m.sport || "⚽"} PAR {idx + 1}</span>
+                                          {/* 👇 RENDER REACTION BUTTONS IN INDIVIDUAL VIEW */}
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[8px] font-black text-white/40 uppercase">{m.sport || "⚽"} PAR {idx + 1}</span>
+                                            {m.status !== 'empty' && (
+                                              <ReactionButtons targetPlayer={activePlayer} bettingRowId={row.id} matchKey={mKey} loggedInPlayer={loggedInPlayerName || "Admin"} />
+                                            )}
+                                          </div>
+                                          
                                           <div className="flex items-center gap-1.5 relative z-30">
                                             {m.status !== 'empty' && <span className={`font-black text-xs px-2 py-0.5 border rounded-md ${getOddsRiskStyle(m.odds)}`}>{m.odds.toFixed(2)}</span>}
                                             {isAdmin && m.status !== 'empty' && (
@@ -483,7 +490,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
               /* ─────────────── TAB 2: GROUPED LIVE MATCHDAY FEED ─────────────── */
               <div key="matchday" className="max-w-3xl mx-auto space-y-6 animate-[stagger-in_0.3s_ease-out]">
                 <div className="space-y-6">
-                  {!hasUserUnlockedDate(realTodayStr) ? ( // 👈 Checking actual today
+                  {!hasUserUnlockedDate(realTodayStr) ? ( 
                     <div className="p-12 text-center rounded-3xl bg-black/40 border border-white/5 flex flex-col items-center justify-center py-16 gap-3 border-dashed">
                       <span className="text-3xl">🔒</span>
                       <h3 className="text-sm font-black text-gray-300 uppercase tracking-wider">Pregled je zaključan!</h3>
@@ -520,9 +527,14 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                                   className={`p-4 rounded-xl border border-white/5 bg-black/40 relative overflow-hidden flex flex-col justify-between min-h-[92px] transition-all cursor-default ${getStatusColor(item.match.status)} ${item.match.status === 'pending' ? 'pending-glow' : ''}`}
                                 >
                                   <div className="flex justify-between items-start gap-2 mb-1">
-                                    <span className="text-[8px] font-black text-white/40 uppercase">
-                                      {item.match.sport || "⚽"} PAR {item.matchKey === 'match1' ? '1' : '2'}
-                                    </span>
+                                    {/* 👇 RENDER REACTION BUTTONS IN FEED VIEW */}
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[8px] font-black text-white/40 uppercase">
+                                        {item.match.sport || "⚽"} PAR {item.matchKey === 'match1' ? '1' : '2'}
+                                      </span>
+                                      <ReactionButtons bettingRowId={item.rowId} matchKey={item.matchKey} loggedInPlayer={loggedInPlayerName || "Admin"} targetPlayer={player} />
+                                    </div>
+                                    
                                     <span className={`font-black text-xs px-2 py-0.5 border rounded-md tracking-tight block ${getOddsRiskStyle(item.match.odds)}`}>
                                       {item.match.odds.toFixed(2)}
                                     </span>

@@ -14,6 +14,7 @@ interface Comment {
   player_name: string;
   comment_text: string;
   created_at: string;
+  
 }
 
 const COMMENT_PLAYER_COLORS: Record<string, string> = {

@@ -1,5 +1,7 @@
+"use client";
 import { useState, useEffect, useMemo } from 'react';
 import { AllPlayersData, PLAYERS } from '../types';
+import { supabase } from '../lib/supabase'; // 👈 Imported Supabase connection
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
@@ -65,7 +67,63 @@ export default function Statistics({ allBets, onBack }: Props) {
   const [mounted, setMounted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // 👇 STATE FOR LIKES & DISLIKES LEADERBOARD
+  const [reactionStats, setReactionStats] = useState({
+    mostLiked: "Učitavanje...",
+    mostDisliked: "Učitavanje...",
+    maxLikes: 0,
+    maxDislikes: 0
+  });
+
   useEffect(() => { setMounted(true); }, []);
+
+  // 👇 FETCH REACTION LEADERS FROM DB ON MOUNT
+  useEffect(() => {
+    async function fetchReactionLeaderboards() {
+      const { data, error } = await supabase
+        .from('pick_reactions')
+        .select('target_player, reaction_type');
+
+      if (error || !data) {
+        console.error("Error fetching reaction stats:", error);
+        setReactionStats({ mostLiked: "---", mostDisliked: "---", maxLikes: 0, maxDislikes: 0 });
+        return;
+      }
+
+      const playerStats: Record<string, { likes: number; dislikes: number }> = {};
+
+      data.forEach((row) => {
+        if (!playerStats[row.target_player]) {
+          playerStats[row.target_player] = { likes: 0, dislikes: 0 };
+        }
+        if (row.reaction_type === 'like') {
+          playerStats[row.target_player].likes++;
+        } else if (row.reaction_type === 'dislike') {
+          playerStats[row.target_player].dislikes++;
+        }
+      });
+
+      let mostLiked = "Niko još";
+      let mostDisliked = "Niko još";
+      let maxLikes = 0;
+      let maxDislikes = 0;
+
+      Object.entries(playerStats).forEach(([player, counts]) => {
+        if (counts.likes > maxLikes) {
+          maxLikes = counts.likes;
+          mostLiked = player;
+        }
+        if (counts.dislikes > maxDislikes) {
+          maxDislikes = counts.dislikes;
+          mostDisliked = player;
+        }
+      });
+
+      setReactionStats({ mostLiked, mostDisliked, maxLikes, maxDislikes });
+    }
+    
+    fetchReactionLeaderboards();
+  }, []);
 
   useEffect(() => {
     if (isFullscreen) {
@@ -335,7 +393,68 @@ export default function Statistics({ allBets, onBack }: Props) {
           })}
         </div>
 
-        {/* ── 2. STANDARD INLINE VIEWPORT CHART CONTAINER ── */}
+        {/* ── 2. NEW POPULARITY REACTION LEADERBOARDS GRID ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          {/* MOST LIKED (❤️) PLAYER PODIUM */}
+          <div className="p-4 rounded-3xl backdrop-blur-md relative overflow-hidden shadow-xl"
+            style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.1) 0%, rgba(0,0,0,0.3) 100%)', border: '1px solid rgba(239,68,68,0.15)' }}>
+            <div className="absolute top-0 right-0 p-3 opacity-[0.04] text-6xl rotate-12 select-none">❤️</div>
+            <div className="flex items-center gap-2 mb-3 relative z-10">
+              <span className="text-2xl drop-shadow-lg">❤️</span>
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest text-red-400 italic">Miljenik Grupe</h3>
+                <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Najviše lajkova na parovima</p>
+              </div>
+            </div>
+            <div className="relative z-10">
+              {reactionStats.maxLikes === 0 ? (
+                <div className="text-center py-2 text-[9px] uppercase font-black tracking-widest text-gray-600">Nema lajkova</div>
+              ) : (
+                <div className="flex items-center gap-2 bg-black/40 border border-red-500/20 p-2 rounded-xl">
+                  {PLAYER_THEMES[reactionStats.mostLiked] && (
+                    <img src={PLAYER_THEMES[reactionStats.mostLiked].icon} alt={reactionStats.mostLiked} className="w-8 h-8 rounded-full border border-red-500/50 shrink-0" />
+                  )}
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-white uppercase leading-none">{reactionStats.mostLiked}</span>
+                    <span className="text-[10px] font-black text-red-400 mt-0.5">🔥 {reactionStats.maxLikes} lajkova</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* MOST DISLIKED (💔) PLAYER PODIUM */}
+          <div className="p-4 rounded-3xl backdrop-blur-md relative overflow-hidden shadow-xl"
+            style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.1) 0%, rgba(0,0,0,0.3) 100%)', border: '1px solid rgba(168,85,247,0.15)' }}>
+            <div className="absolute top-0 right-0 p-3 opacity-[0.04] text-6xl rotate-12 select-none">💔</div>
+            <div className="flex items-center gap-2 mb-3 relative z-10">
+              <span className="text-2xl drop-shadow-lg">💔</span>
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest text-purple-400 italic">Dežurni Degenerik</h3>
+                <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Najviše dislajkovani tiketi</p>
+              </div>
+            </div>
+            <div className="relative z-10">
+              {reactionStats.maxDislikes === 0 ? (
+                <div className="text-center py-2 text-[9px] uppercase font-black tracking-widest text-gray-600">Nema dislajkova</div>
+              ) : (
+                <div className="flex items-center gap-2 bg-black/40 border border-purple-500/20 p-2 rounded-xl">
+                  {PLAYER_THEMES[reactionStats.mostDisliked] && (
+                    <img src={PLAYER_THEMES[reactionStats.mostDisliked].icon} alt={reactionStats.mostDisliked} className="w-8 h-8 rounded-full border border-purple-500/50 shrink-0" />
+                  )}
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-white uppercase leading-none">{reactionStats.mostDisliked}</span>
+                    <span className="text-[10px] font-black text-purple-400 mt-0.5">🤡 {reactionStats.maxDislikes} dislajkova</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+
+        {/* ── 3. STANDARD INLINE VIEWPORT CHART CONTAINER ── */}
         {mounted && timelineData.length > 0 && (
           <div className="p-4 rounded-3xl backdrop-blur-md shadow-xl" style={cardStyle}>
             <div className="mb-4 flex justify-between items-center">
@@ -358,7 +477,7 @@ export default function Statistics({ allBets, onBack }: Props) {
           </div>
         )}
 
-        {/* ── 3. HISTORICAL ALL-TIME AWARDS SECTIONS ── */}
+        {/* ── 4. HISTORICAL ALL-TIME AWARDS SECTIONS ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           
           {/* ALL TIME WIN STREAK PODIUM */}
@@ -404,7 +523,7 @@ export default function Statistics({ allBets, onBack }: Props) {
             </div>
             <div className="relative z-10">
               {jadnici.length === 0 ? (
-                <div className="text-center py-2 text-[9px] uppercase font-black tracking-widest text-gray-600">Nema losih streakova.</div>
+                <div className="text-center py-2 text-[9px] uppercase font-black tracking-widest text-gray-600">Nema losih streakova</div>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {jadnici.map(j => (
@@ -453,7 +572,7 @@ export default function Statistics({ allBets, onBack }: Props) {
 
         </div>
 
-        {/* ── 4. WALL OF SHAME ── */}
+        {/* ── 5. WALL OF SHAME ── */}
         <div className="p-4 rounded-3xl backdrop-blur-md relative overflow-hidden shadow-xl"
           style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.1) 0%, rgba(0,0,0,0.3) 100%)', border: '1px solid rgba(239,68,68,0.15)' }}>
           <div className="absolute top-0 right-0 p-3 opacity-[0.04] text-6xl rotate-12 select-none">🤡</div>
@@ -466,7 +585,7 @@ export default function Statistics({ allBets, onBack }: Props) {
           </div>
           <div className="space-y-2 relative z-10">
             {smallestOdds.length === 0 ? (
-               <div className="text-center py-4 text-[9px] uppercase font-black tracking-widest text-gray-600">Nema jos tiketa.</div>
+               <div className="text-center py-4 text-[9px] uppercase font-black tracking-widest text-gray-600">Nema jos tiketa</div>
             ) : (
               smallestOdds.map((match, idx) => {
                 const pt = PLAYER_THEMES[match.player];
@@ -493,7 +612,7 @@ export default function Statistics({ allBets, onBack }: Props) {
 
       </div>
 
-      {/* ── 5. FULLSCREEN LANDSCAPE MODAL BACKDROP PORTAL ── */}
+      {/* ── 6. FULLSCREEN LANDSCAPE MODAL BACKDROP PORTAL ── */}
       {isFullscreen && (
         <div className="fixed inset-0 bg-[#040712] z-[9999] flex flex-col justify-center items-center p-4 animate-fadeIn">
           <button
