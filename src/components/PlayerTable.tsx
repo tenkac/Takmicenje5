@@ -237,7 +237,6 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     return { wins, pending, score: totalOdds.toFixed(2) };
   }, [allBets, activePlayer]);
 
-  // 2. 👇 The feed strictly uses `realTodayStr` so it always shows the actual current day
   const groupedMatchdayPicks = React.useMemo(() => {
     const groups: Record<string, any[]> = {};
     let totalCount = 0;
@@ -257,6 +256,101 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
     });
     return { groups, totalCount };
   }, [allBets, realTodayStr]);
+
+  // 👇 COMMENTS ENGINE: ONLY SCOPES AND LISTENS TO THE LATEST 5 TICKETS TO PRESERVE OVERHEAD CAPACITY
+  const visibleRowIds = React.useMemo(() => {
+    const ids: number[] = [];
+    if (subTab === "individual") {
+      const rawRows = allBets[activePlayer] || [];
+      const latestFiveRows = [...rawRows]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .reverse()
+        .slice(0, 5); // 👈 Controls the data volume strictly here for comments loading
+      
+      latestFiveRows.forEach(r => { if (r.id) ids.push(r.id); });
+    } else {
+      Object.values(groupedMatchdayPicks.groups).forEach(picks => {
+        picks.forEach(p => { if (p.rowId) ids.push(p.rowId); });
+      });
+    }
+    return ids;
+  }, [subTab, activePlayer, allBets, groupedMatchdayPicks]);
+
+  const [globalComments, setGlobalComments] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (visibleRowIds.length === 0) {
+      console.log("🔍 [Comments Monitor] No visible matches on screen. Skipping fetch.");
+      setGlobalComments([]);
+      return;
+    }
+
+    console.log(`📡 [Comments Monitor] Visible row IDs on screen:`, visibleRowIds);
+
+    const fetchGlobalComments = async () => {
+      console.log("📥 [Comments Monitor] Fetching initial batch of comments via HTTP...");
+      const { data, error } = await supabase
+        .from('pick_comments')
+        .select('id, player_name, comment_text, created_at, betting_row_id, match_key')
+        .in('betting_row_id', visibleRowIds)
+        .order('created_at', { ascending: true });
+      
+      if (data) {
+        console.log(`✅ [Comments Monitor] Successfully loaded ${data.length} comments from database.`);
+        setGlobalComments(data);
+      }
+      if (error) console.error("❌ [Comments Monitor] Database fetch error:", error);
+    };
+
+    fetchGlobalComments();
+
+    console.log("🔌 [Comments Monitor] Initializing real-time WebSocket channel...");
+    
+    const channel = supabase
+      .channel('public:pick_comments_batch', {
+        config: {
+          broadcast: { self: false },
+          presence: { key: '' }
+        }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pick_comments' }, (payload) => {
+        console.log("⚡ [Comments Monitor] Realtime event caught! New insert payload:", payload.new);
+        
+        if (visibleRowIds.includes(payload.new.betting_row_id)) {
+          setGlobalComments((prev) => {
+            if (prev.some(c => c.id === payload.new.id)) {
+              console.log(`⚠️ [Comments Monitor] Skipped duplicate comment with ID: ${payload.new.id}`);
+              return prev;
+            }
+            console.log(`➕ [Comments Monitor] Appending new comment into Match: ${payload.new.match_key}, Row: ${payload.new.betting_row_id}`);
+            return [...prev, payload.new];
+          });
+        } else {
+          console.log(`🙈 [Comments Monitor] Ignored comment because its Row ID (${payload.new.betting_row_id}) is not currently visible on this tab.`);
+        }
+      });
+      
+    channel.subscribe((status) => {
+      console.log(`📶 [Comments Monitor] WebSocket Status Changed -> ${status}`);
+      
+      if (status === 'CHANNEL_ERROR') {
+        console.warn("⚠️ [Comments Monitor] WebSocket dropped or hit an error! (Likely network switch or phone locked).");
+        fetchGlobalComments();
+      }
+      if (status === 'CLOSED') {
+        console.warn("🔒 [Comments Monitor] WebSocket connection closed completely. Pulling fresh backup data...");
+        fetchGlobalComments();
+      }
+      if (status === 'SUBSCRIBED') {
+        console.log("🟢 [Comments Monitor] WebSocket is live and listening for new roasts!");
+      }
+    });
+
+    return () => { 
+      console.log("🗑️ [Comments Monitor] Cleaning up WebSocket channel wrapper.");
+      supabase.removeChannel(channel); 
+    };
+  }, [JSON.stringify(visibleRowIds)]);
 
   const pt = PLAYER_THEMES[activePlayer] || { text: "text-white", border: "border-white/10", icon: "/Avatars/default.webp", hex: "#ffffff" };
 
@@ -396,8 +490,7 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                   ) : (
                     [...allBets[activePlayer]]
                       .sort((a, b) => a.date.localeCompare(b.date))
-                      .reverse()
-                      .slice(0, 5) 
+                      .reverse() // 👈 RESTORED INLINE ARCHIVE VIEW FOR ENTIRE INDIVIDUAL TIMELINE DATA SET
                       .map((row, rowIdx) => {
                       const isToday = row.date === realTodayStr;
                       const isFuture = row.date > realTodayStr;
@@ -446,7 +539,6 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                                     ) : (
                                       <>
                                         <div className="flex justify-between items-start gap-2 mb-1 relative z-10">
-                                          {/* 👇 RENDER REACTION BUTTONS IN INDIVIDUAL VIEW */}
                                           <div className="flex items-center gap-2">
                                             <span className="text-[8px] font-black text-white/40 uppercase">{m.sport || "⚽"} PAR {idx + 1}</span>
                                             {m.status !== 'empty' && (
@@ -469,7 +561,12 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                                         
                                         {m.status !== 'empty' && (
                                           <div onClick={(e) => e.stopPropagation()} className="w-full mt-2 relative z-30">
-                                            <MatchComments bettingRowId={row.id} matchKey={mKey} targetPlayer={activePlayer} loggedInPlayer={loggedInPlayerName || "Admin"} />
+                                            <MatchComments 
+                                              bettingRowId={row.id} 
+                                              matchKey={mKey} 
+                                              targetPlayer={activePlayer} 
+                                              loggedInPlayer={loggedInPlayerName || "Admin"} 
+                                            />
                                           </div>
                                         )}
                                       </>
@@ -527,7 +624,6 @@ export default function PlayerTable({ allBets, activePlayer, setActivePlayer, on
                                   className={`p-4 rounded-xl border border-white/5 bg-black/40 relative overflow-hidden flex flex-col justify-between min-h-[92px] transition-all cursor-default ${getStatusColor(item.match.status)} ${item.match.status === 'pending' ? 'pending-glow' : ''}`}
                                 >
                                   <div className="flex justify-between items-start gap-2 mb-1">
-                                    {/* 👇 RENDER REACTION BUTTONS IN FEED VIEW */}
                                     <div className="flex items-center gap-2">
                                       <span className="text-[8px] font-black text-white/40 uppercase">
                                         {item.match.sport || "⚽"} PAR {item.matchKey === 'match1' ? '1' : '2'}
