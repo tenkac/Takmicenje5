@@ -35,13 +35,24 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
     return () => clearTimeout(t);
   }, []);
 
-  const { playerStats, biggestOdd, mostWins } = useMemo(() => {
+  const { playerStats, biggestOdd, mostWins, playerGroupHits, totalGroupSlots, hasAnyGroupResults } = useMemo(() => {
     // ========================================================================
     // 🏆 REAL RESULTS CONFIGURATION (UPDATE THIS WHEN THE TOURNAMENT HAPPENS)
     // ========================================================================
     const REAL_RESULTS = {
       groups: {
-        A: [], B: [], C: [], D: [], E: [], F: [], G: [], H: [], I: [], J: [], K: [], L: []
+        A: ["🇲🇽 Meksiko", "🇿🇦 Južna Afrika", "🇰🇷 Južna Koreja", "🇨🇿 Češka"],
+        B: ["🇨🇭 Švajcarska", "🇨🇦 Kanada", "🇧🇦 Bosna i Hercegovina", "🇶🇦 Katar"],
+        C: ["🇧🇷 Brazil", "🇲🇦 Maroko", "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Škotska", "🇭🇹 Haiti"],
+        D: ["🇺🇸 SAD", "🇦🇺 Australija", "🇵🇾 Paragvaj", "🇹🇷 Turska"],
+        E: ["🇩🇪 Njemačka", "🇨🇮 Obala Slonovače", "🇪🇨 Ekvador", "🇨🇼 Kurasao"],
+        F: ["🇳🇱 Holandija", "🇯🇵 Japan", "🇸🇪 Švedska", "🇹🇳 Tunis"],
+        G: ["🇧🇪 Belgija", "🇪🇬 Egipat", "🇮🇷 Iran", "🇳🇿 Novi Zeland"],
+        H: ["🇪🇸 Španija", "🇨🇻 Zelenortska Ostrva", "🇺🇾 Urugvaj", "🇸🇦 Saudijska Arabija"],
+        I: ["🇫🇷 Francuska", "🇳🇴 Norveška", "🇸🇳 Senegal", "🇮🇶 Irak"],
+        J: ["🇦🇷 Argentina", "🇦🇹 Austrija", "🇩🇿 Alžir", "🇯🇴 Jordan"],
+        K: ["🇨🇴 Kolumbija", "🇵🇹 Portugal", "🇨🇩 DR Kongo", "🇺🇿 Uzbekistan"],
+        L: ["🏴󠁧󠁢󠁥󠁮󠁧󠁿 Engleska", "🇭🇷 Hrvatska", "🇬🇭 Gana", "🇵🇦 Panama"],
       } as Record<string, string[]>,
       semis: [] as string[], 
       winner: "",            
@@ -52,6 +63,11 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
 
     const playerGroupHits: Record<string, number> = {};
     let hasAnyGroupResults = false;
+    let totalGroupSlots = 0; // number of group positions that actually have results
+
+    Object.keys(REAL_RESULTS.groups).forEach(gLetter => {
+      if (REAL_RESULTS.groups[gLetter].length === 4) totalGroupSlots += 4;
+    });
 
     predictionsData.forEach(user => {
       let hits = 0;
@@ -61,14 +77,23 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
         if (realGroup.length === 4) {
           hasAnyGroupResults = true;
           for(let i = 0; i < 4; i++) {
-            if (predGroup[i] === realGroup[i]) hits++;
+            if (normalize(predGroup[i]) === normalize(realGroup[i])) hits++;
           }
         }
       });
       playerGroupHits[user.player] = hits;
     });
 
-    const maxGroupHits = Math.max(0, ...Object.values(playerGroupHits));
+    // 🥇 TIERED GROUP POINTS: best hit-count = 3, 2nd = 1.5, 3rd = 0.5.
+    // Players tied on the same hit-count share the same tier (and same points).
+    const GROUP_TIER_POINTS = [3, 1.5, 0.5];
+    const distinctHits = [...new Set(Object.values(playerGroupHits))]
+      .filter(h => h > 0)            // 0 correct picks earns nothing
+      .sort((a, b) => b - a);
+    const groupPointsByHits: Record<number, number> = {};
+    distinctHits.forEach((h, i) => {
+      if (i < GROUP_TIER_POINTS.length) groupPointsByHits[h] = GROUP_TIER_POINTS[i];
+    });
 
     let biggestOdd = { player: "---", odds: 0, match: "No Wins Yet" };
     let mostWins   = { player: "---", count: 0 };
@@ -101,11 +126,7 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
          if (preds.goldenBoot && normalize(preds.goldenBoot) === normalize(REAL_RESULTS.goldenBoot)) predictionPoints += 2;
 
          if (hasAnyGroupResults) {
-           if (playerGroupHits[player] === maxGroupHits && maxGroupHits > 0) {
-             predictionPoints += 3;
-           } else {
-             predictionPoints += 1;
-           }
+           predictionPoints += groupPointsByHits[playerGroupHits[player]] || 0;
          }
       }
 
@@ -126,7 +147,7 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
       };
     }).sort((a, b) => b.score - a.score);
 
-    return { playerStats, biggestOdd, mostWins };
+    return { playerStats, biggestOdd, mostWins, playerGroupHits, totalGroupSlots, hasAnyGroupResults };
   }, [allBets, predictionsData]); 
 
   const [first, second, third, ...chasers] = playerStats;
@@ -287,6 +308,66 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
                 </div>
               );
             })}
+          </div>
+
+          {/* ── GROUP-STAGE PREDICTION ACCURACY ── */}
+          <div className="flex flex-col gap-3 pb-10">
+            <div className="flex items-baseline justify-between mb-2 px-2">
+              <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">Grupna Faza</div>
+              <div className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">
+                {totalGroupSlots > 0 ? `Pogođeno · maks ${totalGroupSlots}` : 'Rezultati još nisu uneti'}
+              </div>
+            </div>
+
+            <div
+              className="rounded-2xl p-4 md:p-5 flex flex-col gap-4"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              {(() => {
+                const ranked = PLAYERS
+                  .map(name => ({ name, hits: playerGroupHits[name] || 0 }))
+                  .sort((a, b) => b.hits - a.hits);
+                const scaleMax = Math.max(1, ...ranked.map(r => r.hits));
+                return ranked.map(({ name, hits }, idx) => {
+                  const pt = PLAYER_THEMES[name];
+                  const pct = Math.round((hits / scaleMax) * 100);
+                  return (
+                    <div key={name} className="flex items-center gap-3">
+                      <div className="w-4 text-[11px] font-black text-gray-600 italic text-center shrink-0">{idx + 1}</div>
+                      <div className={`w-9 h-9 rounded-full border-2 ${pt.border} overflow-hidden shrink-0 bg-gray-900`}>
+                        <img src={pt.icon} alt={name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-grow min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-xs font-black uppercase tracking-tight ${pt.text}`}>{name}</span>
+                          <span className="text-[11px] font-black text-white tabular-nums">
+                            {hits}
+                            {totalGroupSlots > 0 && <span className="text-gray-600 font-bold">/{totalGroupSlots}</span>}
+                          </span>
+                        </div>
+                        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: mounted ? `${pct}%` : '0%',
+                              background: `linear-gradient(90deg, ${pt.hex}66, ${pt.hex})`,
+                              boxShadow: hits > 0 ? `0 0 10px ${pt.hex}55` : 'none',
+                              transition: 'width 0.8s cubic-bezier(0.22,1,0.36,1)',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+
+              {!hasAnyGroupResults && (
+                <div className="text-center text-[10px] text-gray-600 uppercase tracking-widest pt-1">
+                  Bar grafikon se puni kako stižu rezultati grupa
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
