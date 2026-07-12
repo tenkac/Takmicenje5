@@ -54,7 +54,12 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
         K: ["🇨🇴 Kolumbija", "🇵🇹 Portugal", "🇨🇩 DR Kongo", "🇺🇿 Uzbekistan"],
         L: ["🏴󠁧󠁢󠁥󠁮󠁧󠁿 Engleska", "🇭🇷 Hrvatska", "🇬🇭 Gana", "🇵🇦 Panama"],
       } as Record<string, string[]>,
-      semis: [] as string[], 
+      semis: [
+              "Španija 🇪🇸",
+              "Francuska 🇫🇷",
+              "Engleska 🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+              "Argentina 🇦🇷"
+             ] as string[], 
       winner: "",            
       goldenBoot: ""         
     };
