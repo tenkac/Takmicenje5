@@ -17,6 +17,13 @@ const PLAYER_THEMES: Record<string, { text: string, border: string, icon: string
   "Dzoni":  { text: "text-yellow-500", border: "border-yellow-500", icon: "/Avatars/dzoni.webp",  hex: "#eab308" },
 };
 
+// 👇 HELPER: Reliably extracts only the flag emoji whether it's at the beginning or end of the string
+const getFlag = (team: string) => {
+  if (!team) return "";
+  const parts = team.trim().split(' ');
+  return parts.find(p => !/[a-zA-ZžŽćĆčČđĐšŠ]/.test(p)) || parts[0] || team;
+};
+
 export default function Leaderboard({ allBets, onPlayerClick }: Props) {
   const [mounted, setMounted] = useState(false);
   
@@ -35,7 +42,7 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
     return () => clearTimeout(t);
   }, []);
 
-  const { playerStats, biggestOdd, mostWins, playerGroupHits, totalGroupSlots, hasAnyGroupResults } = useMemo(() => {
+  const { playerStats, biggestOdd, mostWins, playerGroupHits, playerSemiHits, totalGroupSlots, hasAnyGroupResults } = useMemo(() => {
     // ========================================================================
     // 🏆 REAL RESULTS CONFIGURATION (UPDATE THIS WHEN THE TOURNAMENT HAPPENS)
     // ========================================================================
@@ -55,18 +62,20 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
         L: ["🏴󠁧󠁢󠁥󠁮󠁧󠁿 Engleska", "🇭🇷 Hrvatska", "🇬🇭 Gana", "🇵🇦 Panama"],
       } as Record<string, string[]>,
       semis: [
-              "Španija 🇪🇸",
-              "Francuska 🇫🇷",
-              "Engleska 🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-              "Argentina 🇦🇷"
+        "🇪🇸 Španija",
+        "🇫🇷 Francuska",
+        "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Engleska",
+        "🇦🇷 Argentina"
              ] as string[], 
       winner: "",            
       goldenBoot: ""         
     };
 
-    const normalize = (s: string) => s?.trim().toLowerCase() || "";
+    // Upgraded normalize: strips emojis/symbols so matching works even if emoji placement differs
+    const normalize = (s: string) => s?.replace(/[^a-zžćčđš]/gi, '').toLowerCase() || "";
 
     const playerGroupHits: Record<string, number> = {};
+    const playerSemiHits: Record<string, string[]> = {};
     let hasAnyGroupResults = false;
     let totalGroupSlots = 0; // number of group positions that actually have results
 
@@ -119,12 +128,16 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
 
       const userPredRow = predictionsData.find(p => p.player === player);
       let predictionPoints = 0;
+      const correctSemis: string[] = [];
 
       if (userPredRow && userPredRow.predictions) {
          const preds = userPredRow.predictions;
          
          preds.semis?.forEach((team: string) => {
-           if (team && REAL_RESULTS.semis.map(normalize).includes(normalize(team))) predictionPoints += 0.5;
+           if (team && REAL_RESULTS.semis.map(normalize).includes(normalize(team))) {
+             predictionPoints += 0.5;
+             correctSemis.push(team);
+           }
          });
          
          if (preds.winner && normalize(preds.winner) === normalize(REAL_RESULTS.winner)) predictionPoints += 2;
@@ -135,6 +148,7 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
          }
       }
 
+      playerSemiHits[player] = correctSemis;
       totalScore += predictionPoints;
 
       if (winCount > mostWins.count) mostWins = { player, count: winCount };
@@ -148,11 +162,12 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
         score: parseFloat(totalScore.toFixed(2)), 
         form: recentForm, 
         pendingCount, 
-        predictionPoints 
+        predictionPoints,
+        correctSemis
       };
     }).sort((a, b) => b.score - a.score);
 
-    return { playerStats, biggestOdd, mostWins, playerGroupHits, totalGroupSlots, hasAnyGroupResults };
+    return { playerStats, biggestOdd, mostWins, playerGroupHits, playerSemiHits, totalGroupSlots, hasAnyGroupResults };
   }, [allBets, predictionsData]); 
 
   const [first, second, third, ...chasers] = playerStats;
@@ -301,7 +316,12 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
                   </div>
                   <div className="text-right flex flex-col items-end gap-1">
                     <span className="block text-2xl font-black text-white">{rank.score.toFixed(2)}</span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      {rank.correctSemis && rank.correctSemis.length > 0 && (
+                         <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20 flex items-center gap-1">
+                           1/2: {rank.correctSemis.map((t: string) => getFlag(t)).join(' ')}
+                         </span>
+                      )}
                       {rank.predictionPoints > 0 && (
                          <span className="text-[9px] font-bold text-purple-400 uppercase tracking-widest">+{rank.predictionPoints} Prognoze</span>
                       )}
@@ -315,12 +335,14 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
             })}
           </div>
 
-          {/* ── GROUP-STAGE PREDICTION ACCURACY ── */}
+          {/* ── GROUP-STAGE & SEMIFINAL PREDICTION ACCURACY ── */}
           <div className="flex flex-col gap-3 pb-10">
             <div className="flex items-baseline justify-between mb-2 px-2">
-              <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">Grupna Faza</div>
-              <div className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">
-                {totalGroupSlots > 0 ? `Pogođeno · maks ${totalGroupSlots}` : 'Rezultati još nisu uneti'}
+              <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">Grupna Faza & Polufinalisti</div>
+              <div className="text-[9px] font-bold text-gray-600 uppercase tracking-widest flex items-center gap-2">
+                <span>{totalGroupSlots > 0 ? `Grupe · maks ${totalGroupSlots}` : 'Rezultati još nisu uneti'}</span>
+                <span>·</span>
+                <span>1/2 Finale (0.5 pts)</span>
               </div>
             </div>
 
@@ -330,10 +352,14 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
             >
               {(() => {
                 const ranked = PLAYERS
-                  .map(name => ({ name, hits: playerGroupHits[name] || 0 }))
+                  .map(name => ({ 
+                    name, 
+                    hits: playerGroupHits[name] || 0,
+                    semis: playerSemiHits[name] || []
+                  }))
                   .sort((a, b) => b.hits - a.hits);
                 const scaleMax = Math.max(1, ...ranked.map(r => r.hits));
-                return ranked.map(({ name, hits }, idx) => {
+                return ranked.map(({ name, hits, semis }, idx) => {
                   const pt = PLAYER_THEMES[name];
                   const pct = Math.round((hits / scaleMax) * 100);
                   return (
@@ -362,6 +388,30 @@ export default function Leaderboard({ allBets, onPlayerClick }: Props) {
                           />
                         </div>
                       </div>
+
+                      {/* ⚽ NEW: SEMIFINALISTS GRAPHIC PILL NEXT TO THE BAR */}
+                      <div 
+                        className="shrink-0 flex items-center gap-1.5 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 px-2.5 py-1 rounded-xl shadow-inner"
+                        title={`Pogođeni polufinalisti: ${semis.length > 0 ? semis.join(', ') : 'Nema'}`}
+                      >
+                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-wider">1/2 F:</span>
+                        <div className="flex items-center gap-1 min-w-[48px] justify-end">
+                          {semis.length > 0 ? (
+                            semis.map((team: string, i: number) => (
+                              <span 
+                                key={i} 
+                                title={team}
+                                className="text-xs md:text-sm hover:scale-125 transition-transform cursor-help inline-block filter drop-shadow-[0_0_4px_rgba(59,130,246,0.5)]"
+                              >
+                                {getFlag(team)}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[10px] text-gray-600 font-bold w-full text-center">–</span>
+                          )}
+                        </div>
+                      </div>
+
                     </div>
                   );
                 });
@@ -426,14 +476,28 @@ function PodiumItem({ rank, data, theme, height, color, badge, isWinner = false,
         <AnimatedScore target={data.score} isWinner={isWinner} mounted={mounted} delay={delay} />
         <span className="text-[10px] md:text-xs font-bold text-white/30 uppercase tracking-[0.2em] mb-2">Poena</span>
         
+        {/* ⚽ NEW: SEMIFINALISTS PODIUM INDICATOR */}
+        {data.correctSemis && data.correctSemis.length > 0 && (
+          <div className="mb-1.5 px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded-full flex items-center gap-1 shadow-[0_0_10px_rgba(59,130,246,0.2)] z-10 max-w-[95%]">
+            <span className="text-[8px] md:text-[9px] font-black text-blue-300 uppercase tracking-widest shrink-0">1/2:</span>
+            <div className="flex gap-1 text-[10px] md:text-xs leading-none">
+              {data.correctSemis.map((team: string, idx: number) => (
+                <span key={idx} title={team} className="cursor-help hover:scale-125 transition-transform inline-block">
+                  {getFlag(team)}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {data.predictionPoints > 0 && (
-          <div className="mb-2 px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded-full flex items-center shadow-[0_0_10px_rgba(168,85,247,0.2)]">
+          <div className="mb-2 px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded-full flex items-center shadow-[0_0_10px_rgba(168,85,247,0.2)] z-10">
             <span className="text-[8px] md:text-[9px] font-black text-purple-300 uppercase tracking-widest">+{data.predictionPoints} Prognoze</span>
           </div>
         )}
 
         {gapToAbove !== null && gapToAbove !== undefined && (
-          <div className="mb-2 px-2 py-0.5 bg-black/40 border border-white/10 rounded-full">
+          <div className="mb-2 px-2 py-0.5 bg-black/40 border border-white/10 rounded-full z-10">
             <span className="text-[8px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest">-{gapToAbove} pts</span>
           </div>
         )}
